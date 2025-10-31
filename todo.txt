@@ -1,6 +1,6 @@
-1 + 1
-(2+ 3*7) +17*5
-1m + 1m
-1nm+ 4am + 3au + 1in in cm
-1V*3A in kWh
-1n(Nm)  (nanonewtonmetre)
+1 + 1                       ✅
+(2+ 3*7) +17*5              ✅
+1m + 1m                     ✅
+1nm+ 4am + 3au + 1in as cm  ✅
+1V*3A as kWh                ✅
+1nNm                        ✅
