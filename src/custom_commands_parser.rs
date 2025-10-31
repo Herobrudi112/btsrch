@@ -42,7 +42,7 @@ impl Default for CustomCommandsParser {
                     }
                     #[cfg(target_os = "linux")]
                     {
-                        skip |= vec!["bat", "exe", "ps1"]
+                        skip |= vec!["bat", "exe", "ps1", "lnk"]
                             .contains(&sc.path().extension().unwrap().to_str().unwrap());
                     }
                     if !skip {
@@ -110,7 +110,6 @@ impl QueryParser for CustomCommandsParser {
                                 .unwrap()
                             {
                                 "" | "sh" => {
-
                                     let _ = Command::new("bash")
                                         .arg("-c")
                                         .arg(s3.path.clone())
