@@ -150,6 +150,22 @@ pub fn get_units() -> Vec<Unit> {
         .create()
         .add_si_prefixes(),
     );
+    
+    v.extend(
+        Unit {
+            name: "e".to_string(),
+            plural: "e".to_string(),
+            abbreviation: "e".to_string(),
+            valid_names: Vec::new(),
+            si: UnitNumber {
+                num: f64::consts::E,
+                units: vec![],
+            },
+            priority: 0.0,
+        }
+        .create()
+        .add_si_prefixes(),
+    );
 
     v.extend(
         Unit {
@@ -504,11 +520,29 @@ pub fn get_units() -> Vec<Unit> {
             abbreviation: "mol".to_string(),
             valid_names: Vec::new(),
             si: UnitNumber {
-                num: 1.0,
-                units: vec![UnitExp {
-                    unit: MetricBaseUnit::Mole,
-                    exp: 1,
-                }],
+                num: 6.02214076e23,
+                units: vec![],
+            },
+            priority: 0.0,
+        }
+        .create()
+        .add_si_prefixes(),
+    );
+    
+    v.extend(
+        Unit {
+            name: "u".to_string(),
+            plural: "u".to_string(),
+            abbreviation: "u".to_string(),
+            valid_names: Vec::new(),
+            si: UnitNumber {
+                num: 1.0/6.02214076e23,
+                units: vec![
+                    UnitExp {
+                        unit: MetricBaseUnit::Gramm,
+                        exp: 1,
+                    },
+                ],
             },
             priority: 0.0,
         }

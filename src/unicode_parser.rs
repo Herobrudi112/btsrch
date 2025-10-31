@@ -47,7 +47,7 @@ impl Default for UnicodeParser {
     fn default() -> Self {
         let unicode_list = Arc::new(RwLock::new(Vec::new()));
         let unicode_list_clone = unicode_list.clone();
-        let t=tokio::task::spawn_blocking(|| async move {
+        tokio::spawn(async move {
             let filec = tokio::fs::read_to_string("unicode.json").await.unwrap();
             let mut chars: Vec<UnicodeChar> = serde_json::from_str::<Vec<UnicodeCharRaw>>(&filec)
                 .unwrap()
@@ -75,9 +75,6 @@ impl Default for UnicodeParser {
             chars.extend(emojis);
             let mut unicode_list = unicode_list_clone.write().await;
             *unicode_list = chars;
-        });
-        tokio::spawn(async move {
-            t.await.unwrap().await;
         });
         Self {
             unicode: unicode_list,

@@ -104,7 +104,6 @@ pub enum MetricBaseUnit {
     Second,
     Ampere,
     Kelvin,
-    Mole,
     Candela,
     Byte,
 }
@@ -116,7 +115,6 @@ impl ToString for MetricBaseUnit {
             MetricBaseUnit::Second => "s",
             MetricBaseUnit::Ampere => "A",
             MetricBaseUnit::Kelvin => "°K",
-            MetricBaseUnit::Mole => "mol",
             MetricBaseUnit::Candela => "cd",
             MetricBaseUnit::Byte => "B",
         }
