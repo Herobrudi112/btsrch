@@ -28,6 +28,7 @@ create a directory `scripts` in the root of the cloned repository and add your s
 - `.bat`
 - `.lnk`
 - `.url`
+
 especially for windows, there are probably more supported formats since everything btsrch doesn't recognize gets passed to the `open` crate.
 ### links
 paste a link in the search bar and it'll offer to open it in your standard browser. Only the most common top level domains are supported. If you want another to also work, like e.g. `.ai`, add it to the list in `src/link_parser.rs`.
