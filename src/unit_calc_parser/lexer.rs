@@ -48,7 +48,7 @@ impl ToString for Token {
     }
 }
 pub fn lex(input: String, units: &Vec<Unit>) -> Option<Vec<Token>> {
-    let chars=input.chars().collect::<Vec<char>>();
+    let chars = input.chars().collect::<Vec<char>>();
     let mut start_id = 0;
     let mut output = Vec::new();
     while start_id < chars.len() {
@@ -90,8 +90,8 @@ pub fn get_token(s: String, units: &Vec<Unit>) -> Option<Vec<Token>> {
         ("->", vec![Token::Convert]),
         ("to", vec![Token::Convert]),
         (".", vec![Token::Dot]),
-        ("²", vec![Token::Power,Token::Number("2".to_string())]),
-        ("³", vec![Token::Power,Token::Number("3".to_string())]),
+        ("²", vec![Token::Power, Token::Number("2".to_string())]),
+        ("³", vec![Token::Power, Token::Number("3".to_string())]),
     ];
     if let Some(t) = atomic.iter().find(|a| a.0 == s) {
         return Some(t.1.iter().cloned().collect());
@@ -134,7 +134,7 @@ pub fn get_units() -> Vec<Unit> {
         .create()
         .add_si_prefixes(),
     );
-    
+
     v.extend(
         Unit {
             name: "π".to_string(),
@@ -150,7 +150,7 @@ pub fn get_units() -> Vec<Unit> {
         .create()
         .add_si_prefixes(),
     );
-    
+
     v.extend(
         Unit {
             name: "e".to_string(),
@@ -223,7 +223,7 @@ pub fn get_units() -> Vec<Unit> {
         .create()
         .add_si_prefixes(),
     );
-    
+
     v.extend(
         Unit {
             name: "hertz".to_string(),
@@ -372,6 +372,31 @@ pub fn get_units() -> Vec<Unit> {
 
     v.extend(
         Unit {
+            name: "coulomb".to_string(),
+            plural: "coulombs".to_string(),
+            abbreviation: "C".to_string(),
+            valid_names: Vec::new(),
+            si: UnitNumber {
+                num: 1.0,
+                units: vec![
+                    UnitExp {
+                        unit: MetricBaseUnit::Ampere,
+                        exp: 1,
+                    },
+                    UnitExp {
+                        unit: MetricBaseUnit::Second,
+                        exp: 1,
+                    },
+                ],
+            },
+            priority: 0.0,
+        }
+        .create()
+        .add_si_prefixes(),
+    );
+
+    v.extend(
+        Unit {
             name: "volt".to_string(),
             plural: "volts".to_string(),
             abbreviation: "V".to_string(),
@@ -390,6 +415,138 @@ pub fn get_units() -> Vec<Unit> {
                     UnitExp {
                         unit: MetricBaseUnit::Second,
                         exp: -3,
+                    },
+                    UnitExp {
+                        unit: MetricBaseUnit::Ampere,
+                        exp: -1,
+                    },
+                ],
+            }
+            .cleaned(),
+            priority: 0.0,
+        }
+        .create()
+        .add_si_prefixes(),
+    );
+
+    v.extend(
+        Unit {
+            name: "ohm".to_string(),
+            plural: "ohms".to_string(),
+            abbreviation: "Ω".to_string(),
+            valid_names: Vec::new(),
+            si: UnitNumber {
+                num: 1000.0,
+                units: vec![
+                    UnitExp {
+                        unit: MetricBaseUnit::Gramm,
+                        exp: 1,
+                    },
+                    UnitExp {
+                        unit: MetricBaseUnit::Meter,
+                        exp: 2,
+                    },
+                    UnitExp {
+                        unit: MetricBaseUnit::Second,
+                        exp: -3,
+                    },
+                    UnitExp {
+                        unit: MetricBaseUnit::Ampere,
+                        exp: -2,
+                    },
+                ],
+            }
+            .cleaned(),
+            priority: 0.0,
+        }
+        .create()
+        .add_si_prefixes(),
+    );
+
+    v.extend(
+        Unit {
+            name: "henry".to_string(),
+            plural: "henries".to_string(),
+            abbreviation: "H".to_string(),
+            valid_names: Vec::new(),
+            si: UnitNumber {
+                num: 1000.0,
+                units: vec![
+                    UnitExp {
+                        unit: MetricBaseUnit::Gramm,
+                        exp: 1,
+                    },
+                    UnitExp {
+                        unit: MetricBaseUnit::Meter,
+                        exp: 2,
+                    },
+                    UnitExp {
+                        unit: MetricBaseUnit::Second,
+                        exp: -2,
+                    },
+                    UnitExp {
+                        unit: MetricBaseUnit::Ampere,
+                        exp: -2,
+                    },
+                ],
+            }
+            .cleaned(),
+            priority: 0.0,
+        }
+        .create()
+        .add_si_prefixes(),
+    );
+
+    v.extend(
+        Unit {
+            name: "tesla".to_string(),
+            plural: "teslas".to_string(),
+            abbreviation: "T".to_string(),
+            valid_names: Vec::new(),
+            si: UnitNumber {
+                num: 1000.0,
+                units: vec![
+                    UnitExp {
+                        unit: MetricBaseUnit::Gramm,
+                        exp: 1,
+                    },
+                    UnitExp {
+                        unit: MetricBaseUnit::Second,
+                        exp: -2,
+                    },
+                    UnitExp {
+                        unit: MetricBaseUnit::Ampere,
+                        exp: -1,
+                    },
+                ],
+            }
+            .cleaned(),
+            priority: 0.0,
+        }
+        .create()
+        .add_si_prefixes(),
+    );
+
+    v.extend(
+        Unit {
+            name: "weber".to_string(),
+            plural: "webers".to_string(),
+            abbreviation: "Wb".to_string(),
+            valid_names: Vec::new(),
+            si: UnitNumber {
+                num: 1000.0,
+                units: vec![
+                    UnitExp {
+                        unit: MetricBaseUnit::Gramm,
+                        exp: 1,
+                    },
+                    UnitExp {
+                        unit: MetricBaseUnit::Meter,
+                        exp: 2,
+                    },
+                    UnitExp {
+                        unit: MetricBaseUnit::Second,
+                        exp: -2,
                     },
                     UnitExp {
                         unit: MetricBaseUnit::Ampere,
@@ -528,19 +685,23 @@ pub fn get_units() -> Vec<Unit> {
         .create()
         .add_si_prefixes(),
     );
-    
+
     v.extend(
         Unit {
-            name: "u".to_string(),
-            plural: "u".to_string(),
-            abbreviation: "u".to_string(),
+            name: "knot".to_string(),
+            plural: "knots".to_string(),
+            abbreviation: "knot".to_string(),
             valid_names: Vec::new(),
             si: UnitNumber {
-                num: 1.0/6.02214076e23,
+                num: 0.5144444,
                 units: vec![
                     UnitExp {
-                        unit: MetricBaseUnit::Gramm,
+                        unit: MetricBaseUnit::Meter,
                         exp: 1,
+                    },
+                    UnitExp {
+                        unit: MetricBaseUnit::Second,
+                        exp: -1,
                     },
                 ],
             },
@@ -549,6 +710,83 @@ pub fn get_units() -> Vec<Unit> {
         .create()
         .add_si_prefixes(),
     );
+
+    v.extend(
+        Unit {
+            name: "farad".to_string(),
+            plural: "farad".to_string(),
+            abbreviation: "F".to_string(),
+            valid_names: Vec::new(),
+            si: UnitNumber {
+                num: 0.001,
+                units: vec![
+                    UnitExp {
+                        unit: MetricBaseUnit::Meter,
+                        exp: -2,
+                    },
+                    UnitExp {
+                        unit: MetricBaseUnit::Gramm,
+                        exp: -1,
+                    },
+                    UnitExp {
+                        unit: MetricBaseUnit::Second,
+                        exp: 4,
+                    },
+                    UnitExp {
+                        unit: MetricBaseUnit::Ampere,
+                        exp: 2,
+                    },
+                ],
+            },
+            priority: 0.0,
+        }
+        .create()
+        .add_si_prefixes(),
+    );
+
+    v.extend(vec![
+        Unit {
+            name: "u".to_string(),
+            plural: "u".to_string(),
+            abbreviation: "u".to_string(),
+            valid_names: Vec::new(),
+            si: UnitNumber {
+                num: 1.0 / 6.02214076e23,
+                units: vec![UnitExp {
+                    unit: MetricBaseUnit::Gramm,
+                    exp: 1,
+                }],
+            },
+            priority: 0.0,
+        }
+        .create(),
+    ]);
+
+    v.extend(vec![
+    Unit {
+        name: "mile per hour".to_string(),
+        plural: "miles per hour".to_string(),
+        abbreviation: "mph".to_string(),
+        valid_names: Vec::new(),
+        si: UnitNumber {
+            num: 1609.344 / 3600.0, // 1 mph in m/s
+            units: vec![
+                UnitExp {
+                    unit: MetricBaseUnit::Meter,
+                    exp: 1,
+                },
+                UnitExp {
+                    unit: MetricBaseUnit::Second,
+                    exp: -1,
+                },
+            ],
+        }
+        .cleaned(),
+        priority: 0.0,
+    }
+    .create()
+]);
+
 
     v.extend(
         Unit {
