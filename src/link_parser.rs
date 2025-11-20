@@ -29,7 +29,7 @@ impl QueryParser for LinkParser {
             "tv",
         ];
         let word = r"([A-Za-z0-9_\-]+)";
-        let bword = r"([A-Za-z0-9_\-%]+)";
+        let bword = r"([A-Za-z0-9_\-%\.]+)";
         let tlds = format!("({})", top_level_domains.join("|"));
         let byte = r"(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9][0-9]?|0)";
         let regex = format!(
