@@ -31,6 +31,7 @@ struct SearchApp {
     layout: Vec<ListEntry>,
     pub query_sender: mpsc::Sender<String>,
     selected_id: usize,
+    had_focus:bool,
 }
 
 impl SearchApp {
@@ -41,6 +42,7 @@ impl SearchApp {
             query_sender: tx,
             layout_receiver: rx,
             selected_id: usize::MAX,
+            had_focus:false,
         }
     }
 }
@@ -145,6 +147,14 @@ impl eframe::App for SearchApp {
                         (self.layout[self.selected_id].execute.as_mut().unwrap())();
                     }
                 }
+                if ctx.input(|i| i.focused) {
+                    self.had_focus=true;
+                }
+                if ctx.input(|i| !i.focused) {
+                    if self.had_focus{
+                        ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                    }
+                }
             });
         ctx.set_visuals(egui::Visuals {
             window_fill: egui::Color32::from_rgba_unmultiplied(0, 0, 0, 0),
@@ -180,27 +190,44 @@ async fn main() {
             .with_decorations(false)
             .with_transparent(true)
             .with_inner_size(egui::vec2(500.0, 1000.0))
-            .with_always_on_top().with_active();
+            .with_always_on_top()
+            .with_active();
     }
     #[cfg(target_os = "linux")]
     {
         use x11rb::{connection::Connection, protocol::randr::ConnectionExt};
-        
+
         let (conn, screen_num) = x11rb::connect(None).unwrap();
         let roots = &conn.setup().roots[screen_num];
         let screen = roots;
-        let primary_id=conn.randr_get_output_primary(screen.root).unwrap().reply().unwrap().output;
-        let primary_crtc=conn.randr_get_output_info(primary_id, 0).unwrap().reply().unwrap().crtc;
-        let primary_info=conn.randr_get_crtc_info(primary_crtc, 0).unwrap().reply().unwrap();
-        const WIDTH:f32=500.0;
-        const HEIGHT:f32=1000.0;
-        let x=primary_info.x+((primary_info.width/2) as i16)-(WIDTH as i16)/2;
-        let y=primary_info.y+((primary_info.height/2) as i16)-(HEIGHT as i16)/2;
+        let primary_id = conn
+            .randr_get_output_primary(screen.root)
+            .unwrap()
+            .reply()
+            .unwrap()
+            .output;
+        let primary_crtc = conn
+            .randr_get_output_info(primary_id, 0)
+            .unwrap()
+            .reply()
+            .unwrap()
+            .crtc;
+        let primary_info = conn
+            .randr_get_crtc_info(primary_crtc, 0)
+            .unwrap()
+            .reply()
+            .unwrap();
+        const WIDTH: f32 = 500.0;
+        const HEIGHT: f32 = 1000.0;
+        let x = primary_info.x + ((primary_info.width / 2) as i16) - (WIDTH as i16) / 2;
+        let y = primary_info.y + ((primary_info.height / 2) as i16) - (HEIGHT as i16) / 2;
         options.viewport = egui::ViewportBuilder::default()
             .with_decorations(false)
             .with_transparent(true)
             .with_inner_size(egui::vec2(WIDTH, HEIGHT))
-            .with_always_on_top().with_active(true).with_position((x as f32, y as f32));
+            .with_always_on_top()
+            .with_active(true)
+            .with_position((x as f32, y as f32));
     }
     let (atx, rx) = mpsc::channel::<String>(128);
     let (tx, arx) = mpsc::channel::<ChangeInstruction>(128);
