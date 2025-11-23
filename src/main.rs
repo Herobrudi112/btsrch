@@ -196,38 +196,40 @@ async fn main() {
     #[cfg(target_os = "linux")]
     {
         use x11rb::{connection::Connection, protocol::randr::ConnectionExt};
-
-        let (conn, screen_num) = x11rb::connect(None).unwrap();
-        let roots = &conn.setup().roots[screen_num];
-        let screen = roots;
-        let primary_id = conn
-            .randr_get_output_primary(screen.root)
-            .unwrap()
-            .reply()
-            .unwrap()
-            .output;
-        let primary_crtc = conn
-            .randr_get_output_info(primary_id, 0)
-            .unwrap()
-            .reply()
-            .unwrap()
-            .crtc;
-        let primary_info = conn
-            .randr_get_crtc_info(primary_crtc, 0)
-            .unwrap()
-            .reply()
-            .unwrap();
+        
         const WIDTH: f32 = 500.0;
         const HEIGHT: f32 = 1000.0;
-        let x = primary_info.x + ((primary_info.width / 2) as i16) - (WIDTH as i16) / 2;
-        let y = primary_info.y + ((primary_info.height / 2) as i16) - (HEIGHT as i16) / 2;
+        options.centered=true;
         options.viewport = egui::ViewportBuilder::default()
             .with_decorations(false)
             .with_transparent(true)
             .with_inner_size(egui::vec2(WIDTH, HEIGHT))
             .with_always_on_top()
-            .with_active(true)
-            .with_position((x as f32, y as f32));
+            .with_active(true);
+        if let Ok((conn, screen_num))=x11rb::connect(None){
+            let roots = &conn.setup().roots[screen_num];
+            let screen = roots;
+            let primary_id = conn
+                .randr_get_output_primary(screen.root)
+                .unwrap()
+                .reply()
+                .unwrap()
+                .output;
+            if let Ok(temp)=conn
+                .randr_get_output_info(primary_id, 0)
+                .unwrap()
+                .reply(){
+                    let primary_crtc=temp.crtc;
+                    let primary_info = conn
+                        .randr_get_crtc_info(primary_crtc, 0)
+                        .unwrap()
+                        .reply()
+                        .unwrap();
+                    let x = primary_info.x + ((primary_info.width / 2) as i16) - (WIDTH as i16) / 2;
+                    let y = primary_info.y + ((primary_info.height / 2) as i16) - (HEIGHT as i16) / 2;
+                    options.viewport=options.viewport.with_position((x as f32, y as f32));
+                }
+        }
     }
     let (atx, rx) = mpsc::channel::<String>(128);
     let (tx, arx) = mpsc::channel::<ChangeInstruction>(128);
