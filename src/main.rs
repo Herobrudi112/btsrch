@@ -201,8 +201,8 @@ async fn main() {
         const HEIGHT: f32 = 1000.0;
         options.centered=true;
         options.viewport = egui::ViewportBuilder::default()
-            .with_decorations(false)
-            .with_transparent(true)
+        .with_decorations(false)
+        .with_transparent(true)
             .with_inner_size(egui::vec2(WIDTH, HEIGHT))
             .with_always_on_top()
             .with_active(true);
@@ -228,6 +228,7 @@ async fn main() {
                     let x = primary_info.x + ((primary_info.width / 2) as i16) - (WIDTH as i16) / 2;
                     let y = primary_info.y + ((primary_info.height / 2) as i16) - (HEIGHT as i16) / 2;
                     options.viewport=options.viewport.with_position((x as f32, y as f32));
+                    options.centered=false;
                 }
         }
     }
