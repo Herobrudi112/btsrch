@@ -12,7 +12,7 @@ pub mod unit_calc_parser;
 use std::sync::Arc;
 
 use eframe::egui;
-use egui::{Align, CentralPanel, FontId, Key, Layout};
+use egui::{Align, CentralPanel, FontId, Key, Layout, Shadow};
 use egui::{Frame, TextEdit};
 use single_instance::SingleInstance;
 use tokio::sync::mpsc;
@@ -31,7 +31,8 @@ struct SearchApp {
     layout: Vec<ListEntry>,
     pub query_sender: mpsc::Sender<String>,
     selected_id: usize,
-    had_focus:bool,
+    scroll_todo: bool,
+    had_focus: bool,
 }
 
 impl SearchApp {
@@ -42,7 +43,8 @@ impl SearchApp {
             query_sender: tx,
             layout_receiver: rx,
             selected_id: usize::MAX,
-            had_focus:false,
+            had_focus: false,
+            scroll_todo: false,
         }
     }
 }
@@ -55,21 +57,37 @@ impl eframe::App for SearchApp {
         CentralPanel::default()
             .frame(egui::Frame::NONE)
             .show(ctx, |ui| {
-                let resp = ui.add(
-                    TextEdit::singleline(&mut self.query)
-                        .hint_text("Type to search...")
-                        .desired_width(f32::INFINITY)
-                        .lock_focus(true)
-                        .font(FontId::new(24.0, egui::FontFamily::Proportional)),
-                );
-                resp.request_focus();
-                if resp.changed() {
-                    let q = self.query.clone();
-                    let sender = self.query_sender.clone();
-                    tokio::spawn(async move {
-                        sender.send(q).await.unwrap();
+                Frame::NONE
+                    .fill(egui::Color32::from_rgba_unmultiplied(10 + 30, 10, 10, 200))
+                    .corner_radius(10)
+                    .outer_margin(5)
+                    .inner_margin(5)
+                    .shadow(Shadow {
+                        offset: [0, 0],
+                        blur: 0,
+                        spread: 2,
+                        color: egui::Color32::from_rgba_unmultiplied(0, 255, 255, 128),
+                    })
+                    .show(ui, |ui| {
+                        ui.with_layout(Layout::left_to_right(Align::Min), |ui| {
+                            let resp = ui.add(
+                                TextEdit::singleline(&mut self.query)
+                                    // .hint_text("Type to search...")
+                                    .desired_width(f32::INFINITY)
+                                    .lock_focus(true)
+                                    .font(FontId::new(24.0, egui::FontFamily::Proportional))
+                                    .frame(false),
+                            );
+                            resp.request_focus();
+                            if resp.changed() {
+                                let q = self.query.clone();
+                                let sender = self.query_sender.clone();
+                                tokio::spawn(async move {
+                                    sender.send(q).await.unwrap();
+                                });
+                            }
+                        });
                     });
-                }
                 egui::ScrollArea::vertical()
                     .scroll_bar_visibility(
                         egui::scroll_area::ScrollBarVisibility::VisibleWhenNeeded,
@@ -87,6 +105,7 @@ impl eframe::App for SearchApp {
                                     ChangeInstruction::Empty => {
                                         self.layout.clear();
                                         self.selected_id = usize::MAX;
+                                        self.scroll_todo = false;
                                     }
                                 }
                             }
@@ -106,18 +125,33 @@ impl eframe::App for SearchApp {
                                         brightness = 50;
                                     }
                                 }
-                                Frame::NONE
+                                let frame = Frame::NONE
                                     .fill(egui::Color32::from_rgba_unmultiplied(
-                                        brightness, brightness, brightness, 200,
+                                        brightness + 30,
+                                        brightness,
+                                        brightness,
+                                        200,
                                     ))
                                     .corner_radius(10)
                                     .outer_margin(5)
                                     .inner_margin(5)
+                                    .shadow(Shadow {
+                                        offset: [0, 0],
+                                        blur: 0,
+                                        spread: 2,
+                                        color: egui::Color32::from_rgba_unmultiplied(
+                                            0, 255, 255, 128,
+                                        ),
+                                    })
                                     .show(ui, |ui| {
                                         ui.with_layout(Layout::left_to_right(Align::Min), |ui| {
                                             (l.layout_fn)(ui);
                                         });
                                     });
+                                if self.scroll_todo && self.selected_id == i {
+                                    frame.response.scroll_to_me(None);
+                                    self.scroll_todo = false;
+                                }
                             }
                         });
                     });
@@ -130,6 +164,7 @@ impl eframe::App for SearchApp {
                         while self.layout[self.selected_id].execute.is_none() {
                             self.selected_id = (self.selected_id + 1) % self.layout.len();
                         }
+                        self.scroll_todo = true;
                     }
                 }
                 if ctx.input(|i| i.key_pressed(Key::ArrowUp)) {
@@ -140,6 +175,7 @@ impl eframe::App for SearchApp {
                             self.selected_id =
                                 (self.selected_id - 1 + self.layout.len()) % self.layout.len();
                         }
+                        self.scroll_todo = true;
                     }
                 }
                 if ctx.input(|i| i.key_pressed(Key::Enter)) {
@@ -148,10 +184,10 @@ impl eframe::App for SearchApp {
                     }
                 }
                 if ctx.input(|i| i.focused) {
-                    self.had_focus=true;
+                    self.had_focus = true;
                 }
                 if ctx.input(|i| !i.focused) {
-                    if self.had_focus{
+                    if self.had_focus {
                         ctx.send_viewport_cmd(egui::ViewportCommand::Close);
                     }
                 }
