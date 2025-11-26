@@ -33,6 +33,7 @@ struct SearchApp {
     selected_id: usize,
     scroll_todo: bool,
     had_focus: bool,
+    last_input:String,
 }
 
 impl SearchApp {
@@ -45,6 +46,7 @@ impl SearchApp {
             selected_id: usize::MAX,
             had_focus: false,
             scroll_todo: false,
+            last_input:String::new(),
         }
     }
 }
@@ -81,10 +83,13 @@ impl eframe::App for SearchApp {
                             resp.request_focus();
                             if resp.changed() {
                                 let q = self.query.clone();
-                                let sender = self.query_sender.clone();
-                                tokio::spawn(async move {
-                                    sender.send(q).await.unwrap();
-                                });
+                                if self.last_input!=q{
+                                    let sender = self.query_sender.clone();
+                                    self.last_input=q.clone();
+                                    tokio::spawn(async move {
+                                        sender.send(q).await.unwrap();
+                                    });
+                                }
                             }
                         });
                     });
