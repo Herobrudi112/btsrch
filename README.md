@@ -1,6 +1,5 @@
 # btsrch
 a cross-platform search bar that opens with a keyboard shortcut, lets you type something and shows results which can be selected with arrow keys and executed with enter.
-## feature list
 ## Features
 
 - Instant search UI (opens via keyboard shortcut)
