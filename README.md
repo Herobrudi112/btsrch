@@ -1,5 +1,17 @@
 # btsrch
-a search bar for windows and linux that opens with a keyboard shortcut, lets you type something and shows results in real time which can be selected with arrow keys and executed with enter.
+a cross-platform search bar that opens with a keyboard shortcut, lets you type something and shows results which can be selected with arrow keys and executed with enter.
+## feature list
+## Features
+
+- Instant search UI (opens via keyboard shortcut)
+- Unit-aware calculator (supports mixed units and conversions)
+- Link detection and browser launching
+- File/folder path opening
+- Unicode & emoji search with images
+- Custom shortcuts via scripts directory
+- Works on Windows, X11, and Wayland
+- Extend functionality by adding Rust modules and recompiling
+
 ## capabilities
 ### unit calculator
 a calculator that parses the search input as a calculation and outputs the result, ready to copy with enter.
