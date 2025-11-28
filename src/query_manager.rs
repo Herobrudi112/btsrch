@@ -3,6 +3,7 @@ use tokio::{sync::mpsc, task::JoinHandle};
 
 pub type LayoutFn = Box<dyn FnMut(&mut egui::Ui) + Send + Sync>;
 pub type ExecuteFn = Box<dyn FnMut() + Send + Sync>;
+pub type ScrollToFn = Box<dyn FnMut() + Send + Sync>;
 
 #[async_trait]
 pub trait QueryParser: BoxClone + Send + Sync + 'static {

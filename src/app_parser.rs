@@ -70,13 +70,15 @@ impl Default for AppParser {
                                         .read_to_string(&mut content)
                                         .await
                                         .unwrap();
-                                    let ec = content[(content.find("\nExec=").unwrap() + 6)..]
-                                        .to_string();
-                                    let exec = ec[..(ec.find("\n").unwrap())].to_string();
-                                    apps.push(AppInfo {
-                                        name,
-                                        app_i_d: exec,
-                                    });
+                                    if let Some(pos)=content.find("\nExec="){
+                                        let ec = content[(pos + 6)..]
+                                            .to_string();
+                                        let exec = ec[..(ec.find("\n").unwrap())].to_string();
+                                        apps.push(AppInfo {
+                                            name,
+                                            app_i_d: exec,
+                                        });
+                                    }
                                 }
                             }
                         }

@@ -20,7 +20,7 @@ impl QueryParser for TestParser{
                 ui.label(format!("{}",c));
             }), execute: Some(Box::new(move ||{
                 println!("{}",c);
-            })), priority: 0.0 }).await.unwrap();
+            })), priority: 0.0, }).await.unwrap();
         }
     }
 }
