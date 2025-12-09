@@ -279,8 +279,9 @@ async fn main() {
     let app = SearchApp::new(atx, arx);
     let mut mgr = QueryManager::new(rx, tx);
     let a = tokio::task::spawn_blocking(|| async move {
-        let instance = SingleInstance::new("btsrch_unique_app_key_for_the_single_instance_library._apparently_there's_a_length_limit.").unwrap();
+        let instance = SingleInstance::new("very_short_btsrch_key").unwrap();
         if !instance.is_single() {
+            println!("already open...");
             std::process::exit(0);
         }
         mgr.add_query_parser::<CustomCommandsParser>();
