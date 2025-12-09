@@ -1,2 +1,3 @@
 #!/bin/bash
-cd "/home/johannes/btsrch/"; ./target/release/btsrch
+cd "$(dirname "$0")"
+./target/release/btsrch

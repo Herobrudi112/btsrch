@@ -2,7 +2,9 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use base64::Engine;
-use egui::{ColorImage, Image, TextureHandle, TextureOptions, Vec2};
+use egui::{
+    Align, Color32, ColorImage, FontFamily, FontSelection, Image, RichText, Style, TextureHandle, TextureOptions, Vec2, text::LayoutJob
+};
 use image::ImageFormat;
 use serde::Deserialize;
 use tokio::sync::{RwLock, mpsc};
@@ -48,7 +50,7 @@ impl Default for UnicodeParser {
         let unicode_list = Arc::new(RwLock::new(Vec::new()));
         let unicode_list_clone = unicode_list.clone();
         tokio::spawn(async move {
-            let filec = tokio::fs::read_to_string("unicode.json").await.unwrap();
+            let filec = include_str!("../unicode.json");// tokio::fs::read_to_string("unicode.json").await.unwrap();
             let mut chars: Vec<UnicodeChar> = serde_json::from_str::<Vec<UnicodeCharRaw>>(&filec)
                 .unwrap()
                 .iter()
@@ -58,7 +60,7 @@ impl Default for UnicodeParser {
                     picture: None,
                 })
                 .collect();
-            let filee = tokio::fs::read_to_string("list.with.images.with.modifiers.json").await.unwrap();
+            let filee = include_str!("../list.with.images.with.modifiers.json");//tokio::fs::read_to_string("list.with.images.with.modifiers.json").await.unwrap();
             let emojis_raw: EmojiList = serde_json::from_str(&filee).unwrap();
             let emojis = emojis_raw
                 .emojis
@@ -133,6 +135,27 @@ impl QueryParser for UnicodeParser {
                             ui.add(Image::new(&handle).fit_to_exact_size(Vec2::new(16.0, 16.0)));
                         }
                         ui.label(format!("{} {}", &s2.key, &s2.name));
+                        // let style = Style::default();
+                        // let mut text = LayoutJob::default();
+                        // RichText::new("non-bold text ").color(Color32::from_rgb(255, 255, 255)).append_to(
+                        //     &mut text,
+                        //     &style,
+                        //     FontSelection::Default,
+                        //     Align::Center,
+                        // );
+                        // RichText::new("bold text").color(Color32::from_rgb(0, 255, 255)).underline().append_to(
+                        //     &mut text,
+                        //     &style,
+                        //     FontSelection::Default,
+                        //     Align::Center,
+                        // );
+                        // RichText::new(" non-bold text").color(Color32::from_rgb(255, 255, 255)).append_to(
+                        //     &mut text,
+                        //     &style,
+                        //     FontSelection::Default,
+                        //     Align::Center,
+                        // );
+                        // ui.label(text);
                     }),
                     execute: Some(Box::new(move || {
                         let mut clipboard = arboard::Clipboard::new().unwrap();

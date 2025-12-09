@@ -8,6 +8,7 @@ pub mod query_manager;
 pub mod test_parser;
 pub mod unicode_parser;
 pub mod unit_calc_parser;
+pub mod search_helper;
 
 use std::sync::Arc;
 
