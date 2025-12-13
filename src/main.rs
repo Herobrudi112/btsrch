@@ -5,15 +5,15 @@ pub mod custom_commands_parser;
 pub mod link_parser;
 pub mod path_parser;
 pub mod query_manager;
+pub mod search_helper;
 pub mod test_parser;
 pub mod unicode_parser;
 pub mod unit_calc_parser;
-pub mod search_helper;
 
 use std::sync::Arc;
 
 use eframe::egui;
-use egui::{Align, CentralPanel, FontId, Key, Layout, Shadow};
+use egui::{Align, CentralPanel, FontId, Key, Layout, Modifiers, Shadow};
 use egui::{Frame, TextEdit};
 use single_instance::SingleInstance;
 use tokio::sync::mpsc;
@@ -34,7 +34,7 @@ struct SearchApp {
     selected_id: usize,
     scroll_todo: bool,
     had_focus: bool,
-    last_input:String,
+    last_input: String,
 }
 
 impl SearchApp {
@@ -47,7 +47,7 @@ impl SearchApp {
             selected_id: usize::MAX,
             had_focus: false,
             scroll_todo: false,
-            last_input:String::new(),
+            last_input: String::new(),
         }
     }
 }
@@ -60,6 +60,42 @@ impl eframe::App for SearchApp {
         CentralPanel::default()
             .frame(egui::Frame::NONE)
             .show(ctx, |ui| {
+                if ctx.input(|i| i.key_pressed(Key::Escape)) {
+                    ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                }
+                if ctx.input_mut(|i| i.consume_key(Modifiers::NONE, Key::ArrowDown)) {
+                    if self.selected_id != usize::MAX {
+                        self.selected_id = (self.selected_id + 1) % self.layout.len();
+                        while self.layout[self.selected_id].execute.is_none() {
+                            self.selected_id = (self.selected_id + 1) % self.layout.len();
+                        }
+                        self.scroll_todo = true;
+                    }
+                }
+                if ctx.input_mut(|i| i.consume_key(Modifiers::NONE, Key::ArrowUp)) {
+                    if self.selected_id != usize::MAX {
+                        self.selected_id =
+                            (self.selected_id - 1 + self.layout.len()) % self.layout.len();
+                        while self.layout[self.selected_id].execute.is_none() {
+                            self.selected_id =
+                                (self.selected_id - 1 + self.layout.len()) % self.layout.len();
+                        }
+                        self.scroll_todo = true;
+                    }
+                }
+                if ctx.input(|i| i.key_pressed(Key::Enter)) {
+                    if self.selected_id != usize::MAX {
+                        (self.layout[self.selected_id].execute.as_mut().unwrap())();
+                    }
+                }
+                if ctx.input(|i| i.focused) {
+                    self.had_focus = true;
+                }
+                if ctx.input(|i| !i.focused) {
+                    if self.had_focus {
+                        ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                    }
+                }
                 Frame::NONE
                     .fill(egui::Color32::from_rgba_unmultiplied(10 + 30, 10, 10, 200))
                     .corner_radius(10)
@@ -84,9 +120,9 @@ impl eframe::App for SearchApp {
                             resp.request_focus();
                             if resp.changed() {
                                 let q = self.query.clone();
-                                if self.last_input!=q{
+                                if self.last_input != q {
                                     let sender = self.query_sender.clone();
-                                    self.last_input=q.clone();
+                                    self.last_input = q.clone();
                                     tokio::spawn(async move {
                                         sender.send(q).await.unwrap();
                                     });
@@ -161,42 +197,6 @@ impl eframe::App for SearchApp {
                             }
                         });
                     });
-                if ctx.input(|i| i.key_pressed(Key::Escape)) {
-                    ctx.send_viewport_cmd(egui::ViewportCommand::Close);
-                }
-                if ctx.input(|i| i.key_pressed(Key::ArrowDown)) {
-                    if self.selected_id != usize::MAX {
-                        self.selected_id = (self.selected_id + 1) % self.layout.len();
-                        while self.layout[self.selected_id].execute.is_none() {
-                            self.selected_id = (self.selected_id + 1) % self.layout.len();
-                        }
-                        self.scroll_todo = true;
-                    }
-                }
-                if ctx.input(|i| i.key_pressed(Key::ArrowUp)) {
-                    if self.selected_id != usize::MAX {
-                        self.selected_id =
-                            (self.selected_id - 1 + self.layout.len()) % self.layout.len();
-                        while self.layout[self.selected_id].execute.is_none() {
-                            self.selected_id =
-                                (self.selected_id - 1 + self.layout.len()) % self.layout.len();
-                        }
-                        self.scroll_todo = true;
-                    }
-                }
-                if ctx.input(|i| i.key_pressed(Key::Enter)) {
-                    if self.selected_id != usize::MAX {
-                        (self.layout[self.selected_id].execute.as_mut().unwrap())();
-                    }
-                }
-                if ctx.input(|i| i.focused) {
-                    self.had_focus = true;
-                }
-                if ctx.input(|i| !i.focused) {
-                    if self.had_focus {
-                        ctx.send_viewport_cmd(egui::ViewportCommand::Close);
-                    }
-                }
             });
         ctx.set_visuals(egui::Visuals {
             window_fill: egui::Color32::from_rgba_unmultiplied(0, 0, 0, 0),
@@ -238,17 +238,17 @@ async fn main() {
     #[cfg(target_os = "linux")]
     {
         use x11rb::{connection::Connection, protocol::randr::ConnectionExt};
-        
+
         const WIDTH: f32 = 500.0;
         const HEIGHT: f32 = 1000.0;
-        options.centered=true;
+        options.centered = true;
         options.viewport = egui::ViewportBuilder::default()
-        .with_decorations(false)
-        .with_transparent(true)
+            .with_decorations(false)
+            .with_transparent(true)
             .with_inner_size(egui::vec2(WIDTH, HEIGHT))
             .with_always_on_top()
             .with_active(true);
-        if let Ok((conn, screen_num))=x11rb::connect(None){
+        if let Ok((conn, screen_num)) = x11rb::connect(None) {
             let roots = &conn.setup().roots[screen_num];
             let screen = roots;
             let primary_id = conn
@@ -257,21 +257,18 @@ async fn main() {
                 .reply()
                 .unwrap()
                 .output;
-            if let Ok(temp)=conn
-                .randr_get_output_info(primary_id, 0)
-                .unwrap()
-                .reply(){
-                    let primary_crtc=temp.crtc;
-                    let primary_info = conn
-                        .randr_get_crtc_info(primary_crtc, 0)
-                        .unwrap()
-                        .reply()
-                        .unwrap();
-                    let x = primary_info.x + ((primary_info.width / 2) as i16) - (WIDTH as i16) / 2;
-                    let y = primary_info.y + ((primary_info.height / 2) as i16) - (HEIGHT as i16) / 2;
-                    options.viewport=options.viewport.with_position((x as f32, y as f32));
-                    options.centered=false;
-                }
+            if let Ok(temp) = conn.randr_get_output_info(primary_id, 0).unwrap().reply() {
+                let primary_crtc = temp.crtc;
+                let primary_info = conn
+                    .randr_get_crtc_info(primary_crtc, 0)
+                    .unwrap()
+                    .reply()
+                    .unwrap();
+                let x = primary_info.x + ((primary_info.width / 2) as i16) - (WIDTH as i16) / 2;
+                let y = primary_info.y + ((primary_info.height / 2) as i16) - (HEIGHT as i16) / 2;
+                options.viewport = options.viewport.with_position((x as f32, y as f32));
+                options.centered = false;
+            }
         }
     }
     let (atx, rx) = mpsc::channel::<String>(128);
