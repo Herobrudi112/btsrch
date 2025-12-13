@@ -7,7 +7,7 @@ pub type ScrollToFn = Box<dyn FnMut() + Send + Sync>;
 
 #[async_trait]
 pub trait QueryParser: BoxClone + Send + Sync + 'static {
-    async fn parse(&self, query: String, resopnse: mpsc::Sender<ListEntry>);
+    async fn parse(&self, query: String, resopnse: mpsc::Sender<ListEntry>)->Option<()>;
 }
 
 /// stupid dumb crazy mad workaround for dyn compatibility
@@ -67,7 +67,7 @@ impl QueryManager {
         let mut receiver = self.signal_receiver;
         tokio::spawn(async move {
             let sender = self.layout_sender;
-            let mut handles: Vec<tokio::task::JoinHandle<()>>=Vec::new();
+            let mut handles: Vec<tokio::task::JoinHandle<Option<()>>>=Vec::new();
             while let Some(query) = receiver.recv().await {
                 let mut parsers = Vec::new();
                 for p in &self.parsers{
@@ -88,14 +88,15 @@ impl QueryManager {
                     let q2=query.clone();
                     let tx2=tx.clone();
                     handles.push(tokio::spawn(async move{
-                        p.parse(q2, tx2).await;
+                        p.parse(q2, tx2).await
                     }));
                 }
                 let s2=sender.clone();
                 handles.push(tokio::spawn(async move{
                     while let Some(v)=rx.recv().await{
-                        s2.send(ChangeInstruction::Add(v)).await.unwrap();
+                        s2.send(ChangeInstruction::Add(v)).await.ok()?;
                     }
+                    None
                 }));
             }
         })

@@ -15,8 +15,8 @@ pub fn search<T>(query: &String, list: Vec<(String, &T)>) -> Vec<(usize, Vec<usi
                 .map(|h| (i, vec![h, h + lower_case.len()]))
         })
         .collect::<Vec<(usize, Vec<usize>)>>();
-    s_between_spaces.sort_by_key(|(_, h)| h[0]);
     remove_found(&mut non_found_ids, &mut s_between_spaces);
+    s_between_spaces.sort_by_key(|(_, h)| h[0]);
     let mut s_after_space = non_found_ids
         .clone()
         .into_iter()
@@ -41,7 +41,6 @@ pub fn search<T>(query: &String, list: Vec<(String, &T)>) -> Vec<(usize, Vec<usi
         })
         .collect::<Vec<(usize, Vec<usize>)>>();
     s_anywhere_whole.sort_by_key(|(_, h)| h[0]);
-    remove_found(&mut non_found_ids, &mut s_anywhere_whole);
     s_between_spaces
         .drain(..)
         .chain(s_after_space.drain(..))
@@ -51,7 +50,7 @@ pub fn search<T>(query: &String, list: Vec<(String, &T)>) -> Vec<(usize, Vec<usi
 fn remove_found(non_found_ids: &mut Vec<usize>, s_at_start: &mut Vec<(usize, Vec<usize>)>) {
     *non_found_ids = non_found_ids
         .drain(..)
-        .filter(|i| !s_at_start.iter().any(|(j, _)| i == j))
+        .filter(|i| s_at_start.binary_search_by_key(i, |(a, _)| *a).is_err())
         .collect::<Vec<usize>>();
 }
 pub fn split_multiple(seperator_chars: &Vec<char>, mut string: String) -> Vec<(usize, String)> {

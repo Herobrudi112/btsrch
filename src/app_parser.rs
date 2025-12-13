@@ -96,7 +96,7 @@ impl Default for AppParser {
 }
 #[async_trait]
 impl QueryParser for AppParser {
-    async fn parse(&self, query: String, resopnse: mpsc::Sender<ListEntry>) {
+    async fn parse(&self, query: String, resopnse: mpsc::Sender<ListEntry>)->Option<()> {
         let mut apps = self.apps.read().await;
         while apps.len() == 0 {
             drop(apps);
@@ -143,7 +143,8 @@ impl QueryParser for AppParser {
                     priority,
                 })
                 .await
-                .unwrap();
+                .ok()?;
         }
+        None
     }
 }

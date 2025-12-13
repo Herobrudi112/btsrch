@@ -69,7 +69,7 @@ impl Default for CustomCommandsParser {
 }
 #[async_trait]
 impl QueryParser for CustomCommandsParser {
-    async fn parse(&self, query: String, resopnse: mpsc::Sender<ListEntry>) {
+    async fn parse(&self, query: String, resopnse: mpsc::Sender<ListEntry>)->Option<()> {
         let mut scripts = self.scripts.read().await;
         while scripts.len() == 0 {
             drop(scripts);
@@ -141,7 +141,8 @@ impl QueryParser for CustomCommandsParser {
                     priority,
                 })
                 .await
-                .unwrap();
+                .ok()?;
         }
+        None
     }
 }

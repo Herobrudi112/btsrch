@@ -51,7 +51,16 @@ example working link: `github.com/Johannes-Pabst/btsrch/`
 paste a path to a folder or file to open it in the default application for that file type / the file manager.
 ### unicode / emoji
 search a unicode character's / emoji's name to get offered to copy that character.
-Since the UI crate I'm using doesn't support colored characters, btsrch also shows an image for each emoji from the same json file.
+
+Data is taken from the following files:
+
+[https://gist.github.com/bvincent1/cc1b0391c611d8501bad8e2780060d25](https://gist.github.com/bvincent1/cc1b0391c611d8501bad8e2780060d25)
+
+[https://raw.githubusercontent.com/chalda-pnuzig/emojis.json/refs/heads/master/src/list.with.images.with.modifiers.json](https://raw.githubusercontent.com/chalda-pnuzig/emojis.json/refs/heads/master/src/list.with.images.with.modifiers.json)
+
+[https://www.unicode.org/Public/UCD/latest/ucd/UnicodeData.txt](https://www.unicode.org/Public/UCD/latest/ucd/UnicodeData.txt)
+
+Since egui doesn't support colored characters, btsrch also shows an image for each emoji from the same json file.
 
 
 ## Installation
@@ -83,13 +92,6 @@ after adding this to your config file at `~/.config/sxhkd/sxhkdrc`, you'll have 
 
 ## Licenses
 
-Data is taken from the following files:
-
-[https://gist.github.com/bvincent1/cc1b0391c611d8501bad8e2780060d25](https://gist.github.com/bvincent1/cc1b0391c611d8501bad8e2780060d25)
-
-[https://raw.githubusercontent.com/chalda-pnuzig/emojis.json/refs/heads/master/src/list.with.images.with.modifiers.json](https://raw.githubusercontent.com/chalda-pnuzig/emojis.json/refs/heads/master/src/list.with.images.with.modifiers.json)
-
-[https://www.unicode.org/Public/UCD/latest/ucd/UnicodeData.txt](https://www.unicode.org/Public/UCD/latest/ucd/UnicodeData.txt)
 
 ### License for list.with.images.with.modifiers.json
 ISC License

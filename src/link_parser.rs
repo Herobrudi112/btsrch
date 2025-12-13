@@ -13,7 +13,7 @@ impl Default for LinkParser {
 }
 #[async_trait]
 impl QueryParser for LinkParser {
-    async fn parse(&self, query: String, resopnse: mpsc::Sender<ListEntry>) {
+    async fn parse(&self, query: String, resopnse: mpsc::Sender<ListEntry>) ->Option<()>{
         let top_level_domains = vec![
             "com", // Commercial
             "org", // Organization
@@ -59,7 +59,8 @@ impl QueryParser for LinkParser {
                     priority: 100.0,
                 })
                 .await
-                .unwrap();
+                .ok()?;
         }
+        None
     }
 }

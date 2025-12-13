@@ -20,7 +20,7 @@ impl Default for UnitCalcParser {
 }
 #[async_trait]
 impl QueryParser for UnitCalcParser {
-    async fn parse(&self, query: String, resopnse: mpsc::Sender<ListEntry>) {
+    async fn parse(&self, query: String, resopnse: mpsc::Sender<ListEntry>)->Option<()> {
         let len = query.len();
         let (text, priority) = match execute_unit_str(query) {
             Ok(v) => {
@@ -39,8 +39,8 @@ impl QueryParser for UnitCalcParser {
                 })),
                 priority: priority,
             })
-            .await
-            .unwrap();
+            .await.ok()?;
+        None
     }
 }
 pub fn execute_unit_str(input: String) -> Result<String, String> {

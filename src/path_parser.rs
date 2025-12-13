@@ -14,7 +14,7 @@ impl Default for PathParser {
 }
 #[async_trait]
 impl QueryParser for PathParser {
-    async fn parse(&self, query: String, resopnse: mpsc::Sender<ListEntry>) {
+    async fn parse(&self, query: String, resopnse: mpsc::Sender<ListEntry>) ->Option<()>{
         if Path::new(&query).exists() {
             let q2=query.clone();
             resopnse
@@ -32,7 +32,8 @@ impl QueryParser for PathParser {
                     priority: 10.0,
                 })
                 .await
-                .unwrap();
+                .ok()?;
         }
+        None
     }
 }

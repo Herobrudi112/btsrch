@@ -3,13 +3,17 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use base64::Engine;
 use egui::{
-    Align, Color32, ColorImage, FontSelection, Image, RichText, Style, TextureHandle, TextureOptions, Vec2, text::LayoutJob
+    Align, Color32, ColorImage, FontSelection, Image, RichText, Style, TextureHandle,
+    TextureOptions, Vec2, text::LayoutJob,
 };
 use image::ImageFormat;
 use serde::Deserialize;
 use tokio::sync::{RwLock, mpsc};
 
-use crate::{query_manager::{ListEntry, QueryParser}, search_helper::search};
+use crate::{
+    query_manager::{ListEntry, QueryParser},
+    search_helper::search,
+};
 
 #[derive(Clone, Deserialize)]
 pub struct EmojiList {
@@ -50,17 +54,7 @@ impl Default for UnicodeParser {
         let unicode_list = Arc::new(RwLock::new(Vec::new()));
         let unicode_list_clone = unicode_list.clone();
         tokio::spawn(async move {
-            let filec = include_str!("../unicode.json");// tokio::fs::read_to_string("unicode.json").await.unwrap();
-            let mut chars: Vec<UnicodeChar> = serde_json::from_str::<Vec<UnicodeCharRaw>>(&filec)
-                .unwrap()
-                .iter()
-                .map(|c| UnicodeChar {
-                    name: c.name.clone(),
-                    key: c.key.clone(),
-                    picture: None,
-                })
-                .collect();
-            let filee = include_str!("../list.with.images.with.modifiers.json");//tokio::fs::read_to_string("list.with.images.with.modifiers.json").await.unwrap();
+            let filee = include_str!("../list.with.images.with.modifiers.json"); //tokio::fs::read_to_string("list.with.images.with.modifiers.json").await.unwrap();
             let emojis_raw: EmojiList = serde_json::from_str(&filee).unwrap();
             let emojis = emojis_raw
                 .emojis
@@ -74,7 +68,29 @@ impl Default for UnicodeParser {
                     )))),
                 })
                 .collect::<Vec<UnicodeChar>>();
+            let fileu = include_str!("../UnicodeData.txt");
+            let mut chars = fileu
+                .lines()
+                .filter(|l| l.len() > 0)
+                .map(|l| {
+                    let mut semicolon_seperated =
+                        l.split(';').map(|s| s.to_string()).collect::<Vec<String>>();
+                    let character = char::from_u32(
+                        u32::from_str_radix(&semicolon_seperated[0].to_lowercase(), 16).unwrap(),
+                    )
+                    .map(|c| c.to_string())
+                    .unwrap_or(String::new());
+                    let name = semicolon_seperated.remove(1);
+                    UnicodeChar {
+                        name: name.to_lowercase(),
+                        key: character,
+                        picture: None,
+                    }
+                })
+                .filter(|uc| !emojis.iter().any(|e| e.key == uc.key))
+                .collect::<Vec<UnicodeChar>>();
             chars.extend(emojis);
+            println!("loaded {} chars!", chars.len());
             let mut unicode_list = unicode_list_clone.write().await;
             *unicode_list = chars;
         });
@@ -85,17 +101,21 @@ impl Default for UnicodeParser {
 }
 #[async_trait]
 impl QueryParser for UnicodeParser {
-    async fn parse(&self, query: String, resopnse: mpsc::Sender<ListEntry>) {
+    async fn parse(&self, query: String, resopnse: mpsc::Sender<ListEntry>) -> Option<()> {
         let mut characters = self.unicode.read().await;
         while characters.len() == 0 {
             drop(characters);
             tokio::time::sleep(std::time::Duration::from_millis(100)).await;
             characters = self.unicode.read().await;
         }
-        let mut found=search(&query, characters.iter().map(|c| (format!("{} {}", &c.key, &c.name), c)).collect::<Vec<(String, &UnicodeChar)>>());
+        let texts = characters
+            .iter()
+            .map(|c| (format!("{} {}", &c.key, &c.name), c))
+            .collect::<Vec<(String, &UnicodeChar)>>();
+        let mut found = search(&query, texts);
         for (id, mark) in found.drain(..) {
-            let s=&characters[id];
-            let priority=1.0;
+            let s = &characters[id];
+            let priority = 1.0;
             let s2 = s.clone();
             let s3 = s.clone();
             resopnse
@@ -122,30 +142,35 @@ impl QueryParser for UnicodeParser {
                         if let Some(handle) = handle {
                             ui.add(Image::new(&handle).fit_to_exact_size(Vec2::new(16.0, 16.0)));
                         }
-                        let s=format!("{} {}", &s2.key, &s2.name);
+                        let s = format!("{} {}", &s2.key, &s2.name);
                         let style = Style::default();
                         let mut text = LayoutJob::default();
-                        let mut last=0;
-                        let mut marked=false;
-                        for i in mark.iter().chain(std::iter::once(&s.len())){
-                            let curtxt=s[last..*i].to_string();
-                            if !marked{
-                                RichText::new(curtxt).color(Color32::from_rgb(255, 255, 255)).append_to(
-                                    &mut text,
-                                    &style,
-                                    FontSelection::Default,
-                                    Align::Center,
-                                );
-                            }else{
-                                RichText::new(curtxt).color(Color32::from_rgb(0, 255, 255)).underline().append_to(
-                                    &mut text,
-                                    &style,
-                                    FontSelection::Default,
-                                    Align::Center,
-                                );
+                        let mut last = 0;
+                        let mut marked = false;
+                        for i in mark.iter().chain(std::iter::once(&s.len())) {
+                            let curtxt = s[last..*i].to_string();
+                            if !marked {
+                                RichText::new(curtxt)
+                                    .color(Color32::from_rgb(255, 255, 255))
+                                    .append_to(
+                                        &mut text,
+                                        &style,
+                                        FontSelection::Default,
+                                        Align::Center,
+                                    );
+                            } else {
+                                RichText::new(curtxt)
+                                    .color(Color32::from_rgb(0, 255, 255))
+                                    .underline()
+                                    .append_to(
+                                        &mut text,
+                                        &style,
+                                        FontSelection::Default,
+                                        Align::Center,
+                                    );
                             }
-                            last=*i;
-                            marked=!marked;
+                            last = *i;
+                            marked = !marked;
                         }
                         ui.label(text);
                     }),
@@ -157,7 +182,8 @@ impl QueryParser for UnicodeParser {
                     priority,
                 })
                 .await
-                .unwrap();
+                .ok()?;
         }
+        None
     }
 }
