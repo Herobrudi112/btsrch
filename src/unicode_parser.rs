@@ -3,13 +3,13 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use base64::Engine;
 use egui::{
-    Align, Color32, ColorImage, FontFamily, FontSelection, Image, RichText, Style, TextureHandle, TextureOptions, Vec2, text::LayoutJob
+    Align, Color32, ColorImage, FontSelection, Image, RichText, Style, TextureHandle, TextureOptions, Vec2, text::LayoutJob
 };
 use image::ImageFormat;
 use serde::Deserialize;
 use tokio::sync::{RwLock, mpsc};
 
-use crate::query_manager::{ListEntry, QueryParser};
+use crate::{query_manager::{ListEntry, QueryParser}, search_helper::search};
 
 #[derive(Clone, Deserialize)]
 pub struct EmojiList {
@@ -92,22 +92,10 @@ impl QueryParser for UnicodeParser {
             tokio::time::sleep(std::time::Duration::from_millis(100)).await;
             characters = self.unicode.read().await;
         }
-        for s in characters.iter() {
-            let priority;
-            if s.name
-                .to_lowercase()
-                .split(" ")
-                .collect::<Vec<&str>>()
-                .contains(&query.to_lowercase().as_str())
-            {
-                priority = /* prob = (1/26)^priority */(query.len() as f32) + (characters.len() as f32).log(1.0/26.0);
-            } else if s.name.to_lowercase().contains(&query.to_lowercase()) {
-                priority = (query.len() as f32)
-                    + (characters.len() as f32).log(1.0 / 26.0)
-                    + ((s.name.len() - query.len()) as f32).log(1.0 / 26.0);
-            } else {
-                continue;
-            }
+        let mut found=search(&query, characters.iter().map(|c| (format!("{} {}", &c.key, &c.name), c)).collect::<Vec<(String, &UnicodeChar)>>());
+        for (id, mark) in found.drain(..) {
+            let s=&characters[id];
+            let priority=1.0;
             let s2 = s.clone();
             let s3 = s.clone();
             resopnse
@@ -134,28 +122,32 @@ impl QueryParser for UnicodeParser {
                         if let Some(handle) = handle {
                             ui.add(Image::new(&handle).fit_to_exact_size(Vec2::new(16.0, 16.0)));
                         }
-                        ui.label(format!("{} {}", &s2.key, &s2.name));
-                        // let style = Style::default();
-                        // let mut text = LayoutJob::default();
-                        // RichText::new("non-bold text ").color(Color32::from_rgb(255, 255, 255)).append_to(
-                        //     &mut text,
-                        //     &style,
-                        //     FontSelection::Default,
-                        //     Align::Center,
-                        // );
-                        // RichText::new("bold text").color(Color32::from_rgb(0, 255, 255)).underline().append_to(
-                        //     &mut text,
-                        //     &style,
-                        //     FontSelection::Default,
-                        //     Align::Center,
-                        // );
-                        // RichText::new(" non-bold text").color(Color32::from_rgb(255, 255, 255)).append_to(
-                        //     &mut text,
-                        //     &style,
-                        //     FontSelection::Default,
-                        //     Align::Center,
-                        // );
-                        // ui.label(text);
+                        let s=format!("{} {}", &s2.key, &s2.name);
+                        let style = Style::default();
+                        let mut text = LayoutJob::default();
+                        let mut last=0;
+                        let mut marked=false;
+                        for i in mark.iter().chain(std::iter::once(&s.len())){
+                            let curtxt=s[last..*i].to_string();
+                            if !marked{
+                                RichText::new(curtxt).color(Color32::from_rgb(255, 255, 255)).append_to(
+                                    &mut text,
+                                    &style,
+                                    FontSelection::Default,
+                                    Align::Center,
+                                );
+                            }else{
+                                RichText::new(curtxt).color(Color32::from_rgb(0, 255, 255)).underline().append_to(
+                                    &mut text,
+                                    &style,
+                                    FontSelection::Default,
+                                    Align::Center,
+                                );
+                            }
+                            last=*i;
+                            marked=!marked;
+                        }
+                        ui.label(text);
                     }),
                     execute: Some(Box::new(move || {
                         let mut clipboard = arboard::Clipboard::new().unwrap();

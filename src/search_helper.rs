@@ -1,68 +1,74 @@
-pub fn search<T>(query: String, list: Vec<(String, &T)>) -> Vec<(usize, Vec<usize>)> {
-    let mut s_at_start = (0..list.len())
-        .into_iter()
-        .filter_map(|i| {
-            list[i]
-                .0
-                .starts_with(&query)
-                .then(|| (i, vec![0, query.len()]))
-        })
-        .collect::<Vec<(usize, Vec<usize>)>>();
-    s_at_start.sort_by_key(|(a, _)| &list[*a].0);
+pub fn search<T>(query: &String, list: Vec<(String, &T)>) -> Vec<(usize, Vec<usize>)> {
+    let lower_case = query.to_lowercase();
+    let mut non_found_ids = (0..list.len()).collect::<Vec<usize>>();
     let seperator_chars = vec![' ', '.', '-', '_']
         .drain(..)
-        .filter(|c| !query.contains(*c))
+        .filter(|c| !lower_case.contains(&c.to_lowercase().to_string()))
         .collect::<Vec<char>>();
-    let mut s_between_spaces = (0..list.len())
+    let mut s_between_spaces = non_found_ids
+        .clone()
         .into_iter()
         .filter_map(|i| {
             split_multiple(&seperator_chars, list[i].0.clone())
                 .iter()
-                .find_map(|s| (s.1 == query).then(|| s.0))
-                .map(|h| (i, vec![h, h + query.len()]))
+                .find_map(|s| (s.1.to_lowercase() == *lower_case).then(|| s.0))
+                .map(|h| (i, vec![h, h + lower_case.len()]))
         })
         .collect::<Vec<(usize, Vec<usize>)>>();
     s_between_spaces.sort_by_key(|(_, h)| h[0]);
-    let mut s_after_space = (0..list.len())
+    remove_found(&mut non_found_ids, &mut s_between_spaces);
+    let mut s_after_space = non_found_ids
+        .clone()
         .into_iter()
         .filter_map(|i| {
             split_multiple(&seperator_chars, list[i].0.clone())
                 .iter()
-                .find_map(|s| (s.1.starts_with(&query)).then(|| s.0))
-                .map(|h| (i, vec![h, h + query.len()]))
+                .find_map(|s| (s.1.to_lowercase().starts_with(&lower_case)).then(|| s.0))
+                .map(|h| (i, vec![h, h + lower_case.len()]))
         })
         .collect::<Vec<(usize, Vec<usize>)>>();
     s_after_space.sort_by_key(|(_, h)| h[0]);
-    let mut s_anywhere_whole = (0..list.len())
+    remove_found(&mut non_found_ids, &mut s_after_space);
+    let mut s_anywhere_whole = non_found_ids
+        .clone()
         .into_iter()
         .filter_map(|i| {
             list[i]
                 .0
-                .find(&query)
-                .map(|h| (i, vec![h, h + query.len()]))
+                .to_lowercase()
+                .find(&lower_case)
+                .map(|h| (i, vec![h, h + lower_case.len()]))
         })
         .collect::<Vec<(usize, Vec<usize>)>>();
     s_anywhere_whole.sort_by_key(|(_, h)| h[0]);
-    s_at_start
+    remove_found(&mut non_found_ids, &mut s_anywhere_whole);
+    s_between_spaces
         .drain(..)
         .chain(s_after_space.drain(..))
         .chain(s_anywhere_whole.drain(..))
         .collect()
 }
+fn remove_found(non_found_ids: &mut Vec<usize>, s_at_start: &mut Vec<(usize, Vec<usize>)>) {
+    *non_found_ids = non_found_ids
+        .drain(..)
+        .filter(|i| !s_at_start.iter().any(|(j, _)| i == j))
+        .collect::<Vec<usize>>();
+}
 pub fn split_multiple(seperator_chars: &Vec<char>, mut string: String) -> Vec<(usize, String)> {
     let binding = string.clone();
-    let mut t=binding
+    let mut t = binding
         .match_indices(|c| seperator_chars.contains(&c))
         .map(|(i, _)| i)
         .rev()
         .map(|i| {
             let t = string.split_off(i + 1);
             string.truncate(string.len() - 1);
-            (string.len()-1, t)
-        }).collect::<Vec<(usize, String)>>();
-        t.push((0, string));
-        t.reverse();
-        t
+            (string.len() + 1, t)
+        })
+        .collect::<Vec<(usize, String)>>();
+    t.push((0, string));
+    t.reverse();
+    t
 }
 /*
 todo:
