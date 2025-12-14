@@ -2,13 +2,56 @@ use std::{process::Command, sync::Arc};
 
 #[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
+#[cfg(target_os = "windows")]
+use serde::Deserialize;
 
 use async_trait::async_trait;
-use serde::Deserialize;
 use tokio::sync::{RwLock, mpsc};
 
 use crate::query_manager::{ListEntry, QueryParser};
 
+#[cfg(target_os = "linux")]
+/*
+damn, this looks complex.
+quotes: \", \`, \$, \\
+apparently Exec="\\\\" just becomes \.
+This is specifically the case for only(?) \ and $ since they get parsed bevore the quotation marks.
+damn it, string parsing is another complicated layer on top! I guess I'll search for a library before doing it myself. this is a lot.
+Reserved characters are space (" "), tab, newline, double quote, single quote ("'"), backslash character ("\"), greater-than sign (">"), less-than sign ("<"), tilde ("~"), vertical bar ("|"), ampersand ("&"), semicolon (";"), dollar sign ("$"), asterisk ("*"), question mark ("?"), hash mark ("#"), parenthesis ("(") and (")") and backtick character ("`")
+does that mean they all can be escaped with a backslash?
+%% -> %
+no recursive % parsing
+if a field code contains a space. no new argument
+field codes: %f, %F, %u, %U, %d, %D, %n, %N, (%i, %c, %k)(these should probably be handled instead of removed...), %v, %m
+no field codes in quotes! (:
+%F, %U, %i only valid as their own argument
+*/
+// fn parse_exec_string(s:String)->Vec<String>{
+
+// }
+#[cfg(target_os = "linux")]
+fn system_language() -> Option<String> {
+    for key in ["LC_ALL", "LC_MESSAGES", "LANG"] {
+        use std::env;
+
+        if let Ok(val) = env::var(key) {
+            if !val.is_empty() && val != "C" && val != "POSIX" {
+                return Some(val.split('.').next().unwrap().to_string());
+            }
+        }
+    }
+    None
+}
+#[cfg(target_os = "linux")]
+#[derive(Clone)]
+pub struct AppInfo {
+    pub name: String,
+    pub exec:String,
+    pub search_terms:Option<String>,
+    pub icon:Option<String>,
+}
+
+#[cfg(target_os = "windows")]
 #[derive(Clone, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct AppInfo {
@@ -41,6 +84,7 @@ impl Default for AppParser {
             }
             #[cfg(target_os = "linux")]
             {
+                let lang=system_language().unwrap();
                 let app_dirs = [
                     "/usr/share/applications",
                     &format!(
@@ -61,23 +105,59 @@ impl Default for AppParser {
                                 if path.extension().map_or(false, |ext| ext == "desktop") {
                                     use tokio::{fs::File, io::AsyncReadExt};
 
-                                    let name =
-                                        path.file_stem().unwrap().to_str().unwrap().to_string();
-                                    let mut content = String::new();
-                                    File::open(path)
+                                    let mut name =
+                                        Some(path.file_stem().unwrap().to_str().unwrap().to_string());
+                                        let mut content = String::new();
+                                        File::open(path)
                                         .await
                                         .unwrap()
                                         .read_to_string(&mut content)
                                         .await
                                         .unwrap();
-                                    if let Some(pos)=content.find("\nExec="){
-                                        let ec = content[(pos + 6)..]
-                                            .to_string();
-                                        let exec = ec[..(ec.find("\n").unwrap())].to_string();
-                                        apps.push(AppInfo {
-                                            name,
-                                            app_i_d: exec,
-                                        });
+                                    let lines=content.lines();
+                                    let mut name_lang:Option<String> =None;
+                                    let mut exec:Option<String>=None;
+                                    let mut search_terms:Option<String>=None;
+                                    let mut search_terms_lang:Option<String>=None;
+                                    let mut icon:Option<String>=None;
+                                    let mut display=true;
+                                    for l in lines{
+                                        if let Some((a, b))=l.split_once('='){
+                                            match a{
+                                                "Name"=>{
+                                                    name=Some(b.to_string());
+                                                }
+                                                a if a==format!("Name[{lang}]")=>{
+                                                    name_lang=Some(b.to_string());
+                                                }
+                                                "Exec"=>{
+                                                    exec=Some(b.to_string());
+                                                }
+                                                "Keywords"=>{
+                                                    search_terms=Some(b.to_string());
+                                                }
+                                                a if a==format!("Keywords[{lang}]")=>{
+                                                    search_terms_lang=Some(b.to_string());
+                                                }
+                                                "Icon"=>{
+                                                    icon=Some(b.to_string());
+                                                }
+                                                "NoDisplay"=>{
+                                                    display=match b{
+                                                        "true"=>false,
+                                                        "false"=>true,
+                                                        _=>true,
+                                                    }
+                                                }
+                                                _=>{}
+                                            }
+                                        }else if l.starts_with('[')&&l!="[Desktop Entry]"{
+                                            break; // ignore actions
+                                        }
+                                    }
+                                    let name_comb=name_lang.or(name);
+                                    if display&&name_comb.is_some()&&exec.is_some(){
+                                        apps.push(AppInfo { name: name_comb.unwrap(), exec: exec.unwrap(), search_terms:search_terms.or(search_terms_lang), icon });
                                     }
                                 }
                             }
@@ -96,7 +176,7 @@ impl Default for AppParser {
 }
 #[async_trait]
 impl QueryParser for AppParser {
-    async fn parse(&self, query: String, resopnse: mpsc::Sender<ListEntry>)->Option<()> {
+    async fn parse(&self, query: String, resopnse: mpsc::Sender<ListEntry>) -> Option<()> {
         let mut apps = self.apps.read().await;
         while apps.len() == 0 {
             drop(apps);
@@ -129,9 +209,9 @@ impl QueryParser for AppParser {
                         }
                         #[cfg(target_os = "linux")]
                         {
-                            let _ = Command::new("bash")
-                                .arg("-c")
-                                .arg(s3.app_i_d.clone())
+                            let mut args=s3.exec.split(' ').filter(|s| !vec!["%F", "%U"].contains(s)).collect::<Vec<&str>>();
+                            let _ = Command::new(args[0])
+                                .args(&mut args[1..])
                                 .stdin(std::process::Stdio::null())
                                 .stdout(std::process::Stdio::null())
                                 .stderr(std::process::Stdio::null())

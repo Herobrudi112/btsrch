@@ -3,8 +3,7 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use base64::Engine;
 use egui::{
-    Align, Color32, ColorImage, FontSelection, Image, RichText, Style, TextureHandle,
-    TextureOptions, Vec2, text::LayoutJob,
+    Align, Color32, ColorImage, FontSelection, Image, RichText, Style, TextureHandle, TextureOptions, Ui, Vec2, text::LayoutJob
 };
 use image::ImageFormat;
 use serde::Deserialize;
@@ -119,7 +118,7 @@ impl QueryParser for UnicodeParser {
             let s3 = s.clone();
             resopnse
                 .send(ListEntry {
-                    layout_fn: Box::new(move |ui| {
+                    layout_fn: Box::new(move |mut ui| {
                         let handle = if let Some(picture) = s2.picture.as_ref() {
                             let read = picture.read().unwrap();
                             let handle = if let Some(handle) = &read.1 {
@@ -142,36 +141,7 @@ impl QueryParser for UnicodeParser {
                             ui.add(Image::new(&handle).fit_to_exact_size(Vec2::new(16.0, 16.0)));
                         }
                         let s = format!("{} {}", &s2.key, &s2.name);
-                        let style = Style::default();
-                        let mut text = LayoutJob::default();
-                        let mut last = 0;
-                        let mut marked = false;
-                        for i in mark.iter().chain(std::iter::once(&s.len())) {
-                            let curtxt = s[last..*i].to_string();
-                            if !marked {
-                                RichText::new(curtxt)
-                                    .color(Color32::from_rgb(255, 255, 255))
-                                    .append_to(
-                                        &mut text,
-                                        &style,
-                                        FontSelection::Default,
-                                        Align::Center,
-                                    );
-                            } else {
-                                RichText::new(curtxt)
-                                    .color(Color32::from_rgb(0, 255, 255))
-                                    .underline()
-                                    .append_to(
-                                        &mut text,
-                                        &style,
-                                        FontSelection::Default,
-                                        Align::Center,
-                                    );
-                            }
-                            last = *i;
-                            marked = !marked;
-                        }
-                        ui.label(text);
+                        mark_text(s, &mark, &mut ui);
                     }),
                     execute: Some(Box::new(move || {
                         let mut clipboard = arboard::Clipboard::new().unwrap();
@@ -185,4 +155,37 @@ impl QueryParser for UnicodeParser {
         }
         None
     }
+}
+
+fn mark_text(s:String, mark:&Vec<usize>, ui:&mut Ui) {
+    let style = Style::default();
+    let mut text = LayoutJob::default();
+    let mut last = 0;
+    let mut marked = false;
+    for i in mark.iter().chain(std::iter::once(&s.len())) {
+        let curtxt = s[last..*i].to_string();
+        if !marked {
+            RichText::new(curtxt)
+                .color(Color32::from_rgb(255, 255, 255))
+                .append_to(
+                    &mut text,
+                    &style,
+                    FontSelection::Default,
+                    Align::Center,
+                );
+        } else {
+            RichText::new(curtxt)
+                .color(Color32::from_rgb(0, 255, 255))
+                .underline()
+                .append_to(
+                    &mut text,
+                    &style,
+                    FontSelection::Default,
+                    Align::Center,
+                );
+        }
+        last = *i;
+        marked = !marked;
+    }
+    ui.label(text);
 }
