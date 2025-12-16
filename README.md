@@ -89,6 +89,8 @@ alt + space
 ```
 after adding this to your config file at `~/.config/sxhkd/sxhkdrc`, you'll have to make sxhkd start at boot. Then, everything should work. If it doesn't, feel free to post an issue with a detailed error message.
 
+### Troubleshooting
+- on cinnamon 6.6+, btsrch might not gain focus when opened. As a workaround, the following command can be used in the cinnamon shortcut manager to start btsrch and then give it focus using xdotool: `bash -c "/path/to/btsrch/repo/btsrch.sh & xdotool search --sync --name "^BTSRCH$" windowactivate"`
 
 ## Licenses
 
