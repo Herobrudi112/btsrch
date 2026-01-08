@@ -1,13 +1,17 @@
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
 use async_trait::async_trait;
 use base64::Engine;
 use egui::{
-    Align, Color32, ColorImage, FontSelection, Image, RichText, Style, TextureHandle, TextureOptions, Ui, Vec2, text::LayoutJob
+    Align, Color32, ColorImage, FontSelection, Image, RichText, Style, TextureHandle,
+    TextureOptions, Ui, Vec2, text::LayoutJob,
 };
 use image::ImageFormat;
 use serde::Deserialize;
-use tokio::sync::{RwLock, mpsc};
+use tokio::{
+    sync::{RwLock, mpsc},
+    time::sleep,
+};
 
 use crate::{
     query_manager::{ListEntry, QueryParser},
@@ -79,7 +83,13 @@ impl Default for UnicodeParser {
                     )
                     .map(|c| c.to_string())
                     .unwrap_or(String::new());
-                    let name = semicolon_seperated.remove(1);
+                    let other_name = semicolon_seperated.remove(10);
+                    let first_name = semicolon_seperated.remove(1);
+                    let name = if other_name.len() > 0 {
+                        format!("{first_name} {other_name}")
+                    } else {
+                        first_name
+                    };
                     UnicodeChar {
                         name: name.to_lowercase(),
                         key: character,
@@ -144,9 +154,13 @@ impl QueryParser for UnicodeParser {
                         mark_text(s, &mark, &mut ui);
                     }),
                     execute: Some(Box::new(move || {
-                        let mut clipboard = arboard::Clipboard::new().unwrap();
-                        clipboard.set_text(s3.key.clone()).unwrap();
-                        std::process::exit(0);
+                        let key = s3.key.clone();
+                        tokio::spawn(async {
+                            let mut clipboard = arboard::Clipboard::new().unwrap();
+                            clipboard.set_text(key).unwrap();
+                            sleep(Duration::from_millis(1)).await;
+                            std::process::exit(0);
+                        });
                     })),
                     priority,
                 })
@@ -157,7 +171,7 @@ impl QueryParser for UnicodeParser {
     }
 }
 
-fn mark_text(s:String, mark:&Vec<usize>, ui:&mut Ui) {
+fn mark_text(s: String, mark: &Vec<usize>, ui: &mut Ui) {
     let style = Style::default();
     let mut text = LayoutJob::default();
     let mut last = 0;
@@ -167,22 +181,12 @@ fn mark_text(s:String, mark:&Vec<usize>, ui:&mut Ui) {
         if !marked {
             RichText::new(curtxt)
                 .color(Color32::from_rgb(255, 255, 255))
-                .append_to(
-                    &mut text,
-                    &style,
-                    FontSelection::Default,
-                    Align::Center,
-                );
+                .append_to(&mut text, &style, FontSelection::Default, Align::Center);
         } else {
             RichText::new(curtxt)
                 .color(Color32::from_rgb(0, 255, 255))
                 .underline()
-                .append_to(
-                    &mut text,
-                    &style,
-                    FontSelection::Default,
-                    Align::Center,
-                );
+                .append_to(&mut text, &style, FontSelection::Default, Align::Center);
         }
         last = *i;
         marked = !marked;
