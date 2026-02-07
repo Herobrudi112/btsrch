@@ -15,7 +15,6 @@ use std::sync::Arc;
 use eframe::egui;
 use egui::{Align, CentralPanel, FontId, Key, Layout, Modifiers, Shadow};
 use egui::{Frame, TextEdit};
-use single_instance::SingleInstance;
 use tokio::sync::mpsc;
 
 use crate::app_parser::AppParser;
@@ -234,6 +233,12 @@ async fn main() {
             .with_inner_size(egui::vec2(500.0, 1000.0))
             .with_always_on_top()
             .with_active();
+        use single_instance::SingleInstance;
+        let instance = SingleInstance::new("very_short_btsrch_key").unwrap();
+        if !instance.is_single() {
+            println!("already open...");
+            std::process::exit(0);
+        }
     }
     #[cfg(target_os = "linux")]
     {
@@ -276,11 +281,6 @@ async fn main() {
     let app = SearchApp::new(atx, arx);
     let mut mgr = QueryManager::new(rx, tx);
     let a = tokio::task::spawn_blocking(|| async move {
-        let instance = SingleInstance::new("very_short_btsrch_key").unwrap();
-        if !instance.is_single() {
-            println!("already open...");
-            std::process::exit(0);
-        }
         mgr.add_query_parser::<CustomCommandsParser>();
         mgr.add_query_parser::<LinkParser>();
         mgr.add_query_parser::<PathParser>();
