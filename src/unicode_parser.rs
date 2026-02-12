@@ -158,7 +158,7 @@ impl QueryParser for UnicodeParser {
                         tokio::spawn(async {
                             let mut clipboard = arboard::Clipboard::new().unwrap();
                             clipboard.set_text(key).unwrap();
-                            sleep(Duration::from_millis(1)).await;
+                            sleep(Duration::from_millis(10)).await;
                             std::process::exit(0);
                         });
                     })),

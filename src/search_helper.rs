@@ -1,6 +1,25 @@
+use std::time::Instant;
+
 pub fn search<T>(query: &String, list: Vec<(String, &T)>) -> Vec<(usize, Vec<usize>)> {
+    if query.len()==0{
+        return (0..list.len()).map(|x| (x, Vec::new())).collect::<Vec<_>>();
+    }
+    let start=Instant::now();
     let lower_case = query.to_lowercase();
-    let mut non_found_ids = (0..list.len()).collect::<Vec<usize>>();
+    let non_found_ids = (0..list.len()).collect::<Vec<usize>>();
+    let mut s_anywhere_whole = non_found_ids
+        .clone()
+        .into_iter()
+        .filter_map(|i| {
+            list[i].0.to_lowercase().find(&lower_case).map(|h| {
+                let (_, lookup) = to_lowercase_lookup(&list[i].0);
+                let h2 = lookup[h];
+                let h3 = lookup[h + lower_case.len()];
+                (i, vec![h2, h3])
+            })
+        })
+        .collect::<Vec<(usize, Vec<usize>)>>();
+    let mut non_found_ids=s_anywhere_whole.iter().map(|(i, _)| *i).collect::<Vec<_>>();
     let seperator_chars = vec![' ', '.', '-', '_', ';', ',']
         .drain(..)
         .filter(|c| !lower_case.contains(&c.to_lowercase().to_string()))
@@ -35,23 +54,13 @@ pub fn search<T>(query: &String, list: Vec<(String, &T)>) -> Vec<(usize, Vec<usi
         .collect::<Vec<(usize, Vec<usize>)>>();
     remove_found(&mut non_found_ids, &mut s_after_space);
     s_after_space.sort_by_key(|(_, h)| h[0]);
-    let mut s_anywhere_whole = non_found_ids
-        .clone()
-        .into_iter()
-        .filter_map(|i| {
-            list[i].0.to_lowercase().find(&lower_case).map(|h| {
-                let (_, lookup) = to_lowercase_lookup(&list[i].0);
-                let h2 = lookup[h];
-                let h3 = lookup[h + lower_case.len()];
-                (i, vec![h2, h3])
-            })
-        })
-        .collect::<Vec<(usize, Vec<usize>)>>();
     s_anywhere_whole.sort_by_key(|(_, h)| h[0]);
-    s_between_spaces
+    println!("{:?}", start.elapsed());
+    let mut temp=s_between_spaces
         .drain(..)
-        .chain(s_after_space.drain(..))
-        .chain(s_anywhere_whole.drain(..))
+        .chain(s_after_space.drain(..)).collect::<Vec<_>>();
+    let mut s_anywhere_whole=s_anywhere_whole.drain(..).filter(|x| temp.iter().find(|y| y.0==x.0).is_none()).collect::<Vec<_>>();
+        temp.drain(..).chain(s_anywhere_whole.drain(..))
         .collect()
 }
 fn remove_found(non_found_ids: &mut Vec<usize>, s_at_start: &mut Vec<(usize, Vec<usize>)>) {
