@@ -15,6 +15,7 @@ use std::sync::Arc;
 use eframe::egui;
 use egui::{Align, CentralPanel, FontId, Key, Layout, Modifiers, Shadow};
 use egui::{Frame, TextEdit};
+use existing_instance::Endpoint;
 use tokio::sync::mpsc;
 
 use crate::app_parser::AppParser;
@@ -224,6 +225,11 @@ impl eframe::App for SearchApp {
 async fn main() {
     let mut options = eframe::NativeOptions::default();
     options.run_and_return = false;
+    let endpoint=existing_instance::establish_endpoint("btsrch_short_unique_key", true).unwrap();
+    if let Endpoint::Existing(_)=endpoint {
+        println!("already open...");
+        std::process::exit(0);
+    }
     #[cfg(target_os = "windows")]
     {
         options.centered = true;
@@ -233,12 +239,6 @@ async fn main() {
             .with_inner_size(egui::vec2(500.0, 1000.0))
             .with_always_on_top()
             .with_active();
-        use single_instance::SingleInstance;
-        let instance = SingleInstance::new("very_short_btsrch_key").unwrap();
-        if !instance.is_single() {
-            println!("already open...");
-            std::process::exit(0);
-        }
     }
     #[cfg(target_os = "linux")]
     {
