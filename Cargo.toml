@@ -7,12 +7,15 @@ edition = "2024"
 arboard = "3.6.0"
 async-trait = "0.1.88"
 base64 = "0.22.1"
-eframe = "0.32.0"
-egui = "0.32.0"
+eframe = "0.33.0"
+egui = "0.33.0"
+egui_extras = { version = "0.33.3", features = ["all_loaders"] }
 existing_instance = "0.1.0"
-image = "0.25.6"
+icon = "0.2.0"
+image = {version="0.25.6",features=["png"]}
 open = "5.3.2"
 regex = "1.11.1"
+resvg = "0.47.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tokio = { version = "1.46.1", features = ["full"] }

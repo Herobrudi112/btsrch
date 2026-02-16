@@ -1,9 +1,11 @@
-use std::{process::Command, sync::Arc};
+use std::{process::Command, sync::Arc, time::Instant};
 
-#[cfg(target_os = "windows")]
-use std::os::windows::process::CommandExt;
+#[cfg(target_os = "linux")]
+use egui::load::TexturePoll;
 #[cfg(target_os = "windows")]
 use serde::Deserialize;
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
 
 use async_trait::async_trait;
 use tokio::sync::{RwLock, mpsc};
@@ -46,9 +48,9 @@ fn system_language() -> Option<String> {
 #[derive(Clone)]
 pub struct AppInfo {
     pub name: String,
-    pub exec:String,
-    pub search_terms:Option<String>,
-    pub icon:Option<String>,
+    pub exec: String,
+    pub search_terms: Option<String>,
+    pub icon: Option<String>,
 }
 
 #[cfg(target_os = "windows")]
@@ -67,6 +69,7 @@ impl Default for AppParser {
         let app_list = Arc::new(RwLock::new(Vec::new()));
         let app_list_clone = app_list.clone();
         let t = tokio::task::spawn_blocking(|| async move {
+            let start=Instant::now();
             #[cfg(target_os = "windows")]
             {
                 use std::process::Stdio;
@@ -84,7 +87,11 @@ impl Default for AppParser {
             }
             #[cfg(target_os = "linux")]
             {
-                let lang=system_language().unwrap();
+                use icon::Icons;
+
+                let icons = Icons::new();
+                println!("{:?}", start.elapsed());
+                let lang = system_language().unwrap();
                 let app_dirs = [
                     "/usr/share/applications",
                     &format!(
@@ -103,61 +110,119 @@ impl Default for AppParser {
                             for entry in entries.flatten() {
                                 let path = entry.path();
                                 if path.extension().map_or(false, |ext| ext == "desktop") {
-                                    use tokio::{fs::File, io::AsyncReadExt};
+                                    use tokio::fs::read_to_string;
 
-                                    let mut name =
-                                        Some(path.file_stem().unwrap().to_str().unwrap().to_string());
-                                        let mut content = String::new();
-                                        File::open(path)
-                                        .await
-                                        .unwrap()
-                                        .read_to_string(&mut content)
-                                        .await
-                                        .unwrap();
-                                    let lines=content.lines();
-                                    let mut name_lang:Option<String> =None;
-                                    let mut exec:Option<String>=None;
-                                    let mut search_terms:Option<String>=None;
-                                    let mut search_terms_lang:Option<String>=None;
-                                    let mut icon:Option<String>=None;
-                                    let mut display=true;
-                                    for l in lines{
-                                        if let Some((a, b))=l.split_once('='){
-                                            match a{
-                                                "Name"=>{
-                                                    name=Some(b.to_string());
+                                    let mut name = Some(
+                                        path.file_stem().unwrap().to_str().unwrap().to_string(),
+                                    );
+                                    let content = read_to_string(path).await.unwrap();
+                                    let lines = content.lines();
+                                    let mut name_lang: Option<String> = None;
+                                    let mut exec: Option<String> = None;
+                                    let mut search_terms: Option<String> = None;
+                                    let mut search_terms_lang: Option<String> = None;
+                                    let mut icon: Option<String> = None;
+                                    let mut display = true;
+                                    for l in lines {
+                                        if let Some((a, b)) = l.split_once('=') {
+                                            match a {
+                                                "Name" => {
+                                                    name = Some(b.to_string());
                                                 }
-                                                a if a==format!("Name[{lang}]")=>{
-                                                    name_lang=Some(b.to_string());
+                                                a if a == format!("Name[{lang}]") => {
+                                                    name_lang = Some(b.to_string());
                                                 }
-                                                "Exec"=>{
-                                                    exec=Some(b.to_string());
+                                                "Exec" => {
+                                                    exec = Some(b.to_string());
                                                 }
-                                                "Keywords"=>{
-                                                    search_terms=Some(b.to_string());
+                                                "Keywords" => {
+                                                    search_terms = Some(b.to_string());
                                                 }
-                                                a if a==format!("Keywords[{lang}]")=>{
-                                                    search_terms_lang=Some(b.to_string());
+                                                a if a == format!("Keywords[{lang}]") => {
+                                                    search_terms_lang = Some(b.to_string());
                                                 }
-                                                "Icon"=>{
-                                                    icon=Some(b.to_string());
+                                                "Icon" => {
+                                                    icon = Some(b.to_string());
                                                 }
-                                                "NoDisplay"=>{
-                                                    display=match b{
-                                                        "true"=>false,
-                                                        "false"=>true,
-                                                        _=>true,
+                                                "NoDisplay" => {
+                                                    display = match b {
+                                                        "true" => false,
+                                                        "false" => true,
+                                                        _ => true,
                                                     }
                                                 }
-                                                _=>{}
+                                                _ => {}
                                             }
-                                        }else if l.starts_with('[')&&l!="[Desktop Entry]"{
+                                        } else if l.starts_with('[') && l != "[Desktop Entry]" {
                                             break; // ignore actions
                                         }
                                     }
-                                    let name_comb=name_lang.or(name);
-                                    if display&&name_comb.is_some()&&exec.is_some(){
-                                        apps.push(AppInfo { name: name_comb.unwrap(), exec: exec.unwrap(), search_terms:search_terms.or(search_terms_lang), icon });
+                                    let name_comb = name_lang.or(name);
+                                    if display && name_comb.is_some() && exec.is_some() {
+                                        let icon = icon
+                                            .map(|icon| icons.find_default_icon(icon.as_str(), 16, 1))
+                                            .flatten()
+                                            .map(|icon_file| {
+                                                let path = icon_file.path();
+                                                if path.extension().unwrap().to_str().unwrap() == "svg"
+                                                {
+                                                    let cache_path = format!(
+                                                        "{}{}{}.png",
+                                                        std::env::current_exe()
+                                                            .unwrap()
+                                                            .ancestors()
+                                                            .nth(3)
+                                                            .unwrap()
+                                                            .join("btsrch_cache")
+                                                            .to_str()
+                                                            .unwrap(),
+                                                        path.parent().unwrap().to_str().unwrap(),
+                                                        path.file_stem().unwrap().to_str().unwrap()
+                                                    );
+                                                    println!("{:?}", cache_path);
+                                                    if !Path::new(&cache_path).exists(){
+                                                        println!("rendering...");
+                                                        use std::fs::{create_dir_all, read_to_string};
+        
+                                                        use resvg::{
+                                                            tiny_skia::Pixmap,
+                                                            usvg::Transform,
+                                                        };
+        
+                                                        let tree = resvg::usvg::Tree::from_str(
+                                                            read_to_string(path).unwrap().as_str(),
+                                                            &resvg::usvg::Options::default(),
+                                                        )
+                                                        .unwrap();
+                                                        let mut pixmap = Pixmap::new(
+                                                            tree.size().width().ceil() as u32,
+                                                            tree.size().height().ceil() as u32,
+                                                        )
+                                                        .unwrap();
+                                                        resvg::render(
+                                                            &tree,
+                                                            Transform::default(),
+                                                            &mut pixmap.as_mut(),
+                                                        );
+                                                        create_dir_all(
+                                                            &Path::new(&cache_path).parent().unwrap(),
+                                                        )
+                                                        .unwrap();
+                                                        pixmap.save_png(&cache_path).unwrap();
+                                                    }
+                                                    Some(cache_path)
+                                                } else {
+                                                    println!(" {:?}", path);
+                                                    path.to_str().map(|s| s.to_string())
+                                                }
+                                            })
+                                            .flatten();
+                                        apps.push(AppInfo {
+                                            name: name_comb.unwrap(),
+                                            exec: exec.unwrap(),
+                                            search_terms: search_terms.or(search_terms_lang),
+                                            icon,
+                                        });
                                     }
                                 }
                             }
@@ -166,6 +231,7 @@ impl Default for AppParser {
                 }
                 let mut app_list = app_list_clone.write().await;
                 *app_list = apps;
+                println!("{:?}", start.elapsed());
             }
         });
         tokio::spawn(async move {
@@ -199,6 +265,17 @@ impl QueryParser for AppParser {
             resopnse
                 .send(ListEntry {
                     layout_fn: Box::new(move |ui| {
+                        #[cfg(target_os = "linux")]
+                        {
+                            if let Some(handle) = &s2.icon {
+                                use egui::{Image, Vec2};
+
+                                ui.add(
+                                    Image::new(format!("file://{}", &handle))
+                                        .fit_to_exact_size(Vec2::new(16.0, 16.0)),
+                                );
+                            }
+                        }
                         ui.label(format!("{}", &s2.name));
                     }),
                     execute: Some(Box::new(move || {
@@ -209,7 +286,11 @@ impl QueryParser for AppParser {
                         }
                         #[cfg(target_os = "linux")]
                         {
-                            let mut args=s3.exec.split(' ').filter(|s| !vec!["%F", "%U"].contains(s)).collect::<Vec<&str>>();
+                            let mut args = s3
+                                .exec
+                                .split(' ')
+                                .filter(|s| !vec!["%F", "%U"].contains(s))
+                                .collect::<Vec<&str>>();
                             let _ = Command::new(args[0])
                                 .args(&mut args[1..])
                                 .stdin(std::process::Stdio::null())
