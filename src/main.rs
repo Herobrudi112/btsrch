@@ -245,13 +245,12 @@ async fn main() {
     {
         use x11rb::{connection::Connection, protocol::randr::ConnectionExt};
 
-        const WIDTH: f32 = 500.0;
-        const HEIGHT: f32 = 1000.0;
+        let mut width: f32 = 500.0;
+        let mut height: f32 = 1000.0;
         options.centered = true;
         options.viewport = egui::ViewportBuilder::default()
             .with_decorations(false)
             .with_transparent(true)
-            .with_inner_size(egui::vec2(WIDTH, HEIGHT))
             .with_always_on_top()
             .with_active(true);
         if let Ok((conn, screen_num)) = x11rb::connect(None) {
@@ -270,12 +269,15 @@ async fn main() {
                     .unwrap()
                     .reply()
                     .unwrap();
-                let x = primary_info.x + ((primary_info.width / 2) as i16) - (WIDTH as i16) / 2;
-                let y = primary_info.y + ((primary_info.height / 2) as i16) - (HEIGHT as i16) / 2;
+                width=primary_info.width as f32 * 0.3;
+                height=primary_info.height as f32 * 0.8;
+                let x = primary_info.x + ((primary_info.width / 2) as i16) - (width as i16) / 2;
+                let y = primary_info.y + ((primary_info.height / 2) as i16) - (height as i16) / 2;
                 options.viewport = options.viewport.with_position((x as f32, y as f32));
                 options.centered = false;
             }
         }
+        options.viewport = options.viewport.with_inner_size(egui::vec2(width, height));
     }
     let (atx, rx) = mpsc::channel::<String>(128);
     let (tx, arx) = mpsc::channel::<ChangeInstruction>(128);

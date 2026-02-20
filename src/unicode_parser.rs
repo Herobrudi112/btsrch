@@ -3,8 +3,7 @@ use std::{sync::Arc, time::Duration};
 use async_trait::async_trait;
 use base64::Engine;
 use egui::{
-    Align, Color32, ColorImage, FontSelection, Image, RichText, Style, TextureHandle,
-    TextureOptions, Ui, Vec2, text::LayoutJob,
+    Align, Color32, ColorImage, FontSelection, Image, Label, RichText, Style, TextureHandle, TextureOptions, Ui, Vec2, text::LayoutJob
 };
 use image::ImageFormat;
 use serde::Deserialize;
@@ -171,7 +170,7 @@ impl QueryParser for UnicodeParser {
     }
 }
 
-fn mark_text(s: String, mark: &Vec<usize>, ui: &mut Ui) {
+pub fn mark_text(s: String, mark: &Vec<usize>, ui: &mut Ui) {
     let style = Style::default();
     let mut text = LayoutJob::default();
     let mut last = 0;
@@ -191,5 +190,5 @@ fn mark_text(s: String, mark: &Vec<usize>, ui: &mut Ui) {
         last = *i;
         marked = !marked;
     }
-    ui.label(text);
+    ui.add(Label::new(text).wrap());
 }

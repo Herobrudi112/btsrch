@@ -1,7 +1,5 @@
 use std::{process::Command, sync::Arc, time::Instant};
 
-#[cfg(target_os = "linux")]
-use egui::load::TexturePoll;
 #[cfg(target_os = "windows")]
 use serde::Deserialize;
 #[cfg(target_os = "windows")]
@@ -10,7 +8,7 @@ use std::os::windows::process::CommandExt;
 use async_trait::async_trait;
 use tokio::sync::{RwLock, mpsc};
 
-use crate::query_manager::{ListEntry, QueryParser};
+use crate::{query_manager::{ListEntry, QueryParser}, search_helper::search, unicode_parser::mark_text};
 
 #[cfg(target_os = "linux")]
 /*
@@ -47,6 +45,7 @@ fn system_language() -> Option<String> {
 #[cfg(target_os = "linux")]
 #[derive(Clone)]
 pub struct AppInfo {
+    pub filename:String,
     pub name: String,
     pub exec: String,
     pub search_terms: Option<String>,
@@ -93,11 +92,11 @@ impl Default for AppParser {
                 println!("{:?}", start.elapsed());
                 let lang = system_language().unwrap();
                 let app_dirs = [
-                    "/usr/share/applications",
                     &format!(
                         "{}/.local/share/applications",
                         std::env::var("HOME").unwrap()
                     ),
+                    "/usr/share/applications",
                 ];
                 let mut apps = Vec::new();
                 for dir in app_dirs {
@@ -109,13 +108,14 @@ impl Default for AppParser {
                         if let Ok(entries) = fs::read_dir(dir) {
                             for entry in entries.flatten() {
                                 let path = entry.path();
-                                if path.extension().map_or(false, |ext| ext == "desktop") {
+                                let filename=path.file_name().unwrap().to_str().unwrap().to_string();
+                                if path.extension().map_or(false, |ext| ext == "desktop")&&!apps.iter().any(|a: &AppInfo| a.filename==filename) {
                                     use tokio::fs::read_to_string;
 
                                     let mut name = Some(
                                         path.file_stem().unwrap().to_str().unwrap().to_string(),
                                     );
-                                    let content = read_to_string(path).await.unwrap();
+                                    let content = read_to_string(&path).await.unwrap();
                                     let lines = content.lines();
                                     let mut name_lang: Option<String> = None;
                                     let mut exec: Option<String> = None;
@@ -160,7 +160,7 @@ impl Default for AppParser {
                                     let name_comb = name_lang.or(name);
                                     if display && name_comb.is_some() && exec.is_some() {
                                         let icon = icon
-                                            .map(|icon| icons.find_default_icon(icon.as_str(), 16, 1))
+                                            .map(|icon| {let find_default_icon = icons.find_icon(icon.as_str(), 16, 1, "breeze-dark"); println!("{icon}: {:?}", find_default_icon); find_default_icon})
                                             .flatten()
                                             .map(|icon_file| {
                                                 let path = icon_file.path();
@@ -179,9 +179,7 @@ impl Default for AppParser {
                                                         path.parent().unwrap().to_str().unwrap(),
                                                         path.file_stem().unwrap().to_str().unwrap()
                                                     );
-                                                    println!("{:?}", cache_path);
                                                     if !Path::new(&cache_path).exists(){
-                                                        println!("rendering...");
                                                         use std::fs::{create_dir_all, read_to_string};
         
                                                         use resvg::{
@@ -212,12 +210,12 @@ impl Default for AppParser {
                                                     }
                                                     Some(cache_path)
                                                 } else {
-                                                    println!(" {:?}", path);
                                                     path.to_str().map(|s| s.to_string())
                                                 }
                                             })
                                             .flatten();
                                         apps.push(AppInfo {
+                                            filename,
                                             name: name_comb.unwrap(),
                                             exec: exec.unwrap(),
                                             search_terms: search_terms.or(search_terms_lang),
@@ -249,19 +247,11 @@ impl QueryParser for AppParser {
             tokio::time::sleep(std::time::Duration::from_millis(100)).await;
             apps = self.apps.read().await;
         }
-        for s in apps.iter() {
-            let priority;
-            if s.name.to_lowercase().starts_with(&query.to_lowercase()) {
-                priority = /* prob = (1/26)^priority */(query.len() as f32) + (apps.len() as f32).log(1.0/26.0);
-            } else if s.name.to_lowercase().contains(&query.to_lowercase()) {
-                priority = (query.len() as f32)
-                    + (apps.len() as f32).log(1.0 / 26.0)
-                    + ((s.name.len() - query.len()) as f32).log(1.0 / 26.0);
-            } else {
-                continue;
-            }
-            let s2 = s.clone();
-            let s3 = s.clone();
+        let mut results=search(&query, apps.iter().map(|a| (Some(a.name.clone()).iter().chain(a.search_terms.iter()).map(|s| s.clone()).collect::<Vec<String>>().join(" "), a)).collect());
+        for s in results.drain(..) {
+            let priority=1.0;
+            let s2 = apps[s.0].clone();
+            let s3 = apps[s.0].clone();
             resopnse
                 .send(ListEntry {
                     layout_fn: Box::new(move |ui| {
@@ -276,7 +266,7 @@ impl QueryParser for AppParser {
                                 );
                             }
                         }
-                        ui.label(format!("{}", &s2.name));
+                        mark_text(Some(s2.name.clone()).iter().chain(s2.search_terms.iter()).map(|s| s.clone()).collect::<Vec<String>>().join(" "), &s.1, ui);
                     }),
                     execute: Some(Box::new(move || {
                         #[cfg(target_os = "windows")]
