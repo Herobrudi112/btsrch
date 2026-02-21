@@ -57,6 +57,7 @@ impl eframe::App for SearchApp {
         egui::Rgba::TRANSPARENT.to_array()
     }
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        image_extras::register();
         egui_extras::install_image_loaders(ctx);
         CentralPanel::default()
             .frame(egui::Frame::NONE)

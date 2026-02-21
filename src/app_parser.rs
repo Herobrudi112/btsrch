@@ -209,6 +209,25 @@ impl Default for AppParser {
                                                         pixmap.save_png(&cache_path).unwrap();
                                                     }
                                                     Some(cache_path)
+                                                }else if path.extension().unwrap().to_str().unwrap() == "xpm"
+                                                {
+                                                    let cache_path = format!(
+                                                        "{}{}{}.png",
+                                                        std::env::current_exe()
+                                                            .unwrap()
+                                                            .ancestors()
+                                                            .nth(3)
+                                                            .unwrap()
+                                                            .join("btsrch_cache")
+                                                            .to_str()
+                                                            .unwrap(),
+                                                        path.parent().unwrap().to_str().unwrap(),
+                                                        path.file_stem().unwrap().to_str().unwrap()
+                                                    );
+                                                    if !Path::new(&cache_path).exists(){
+                                                        image::open(&path).unwrap().save(&cache_path).unwrap();
+                                                    }
+                                                    Some(cache_path)
                                                 } else {
                                                     path.to_str().map(|s| s.to_string())
                                                 }
