@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use tokio::{sync::mpsc, task::JoinHandle};
 
-pub type LayoutFn = Box<dyn FnMut(&mut egui::Ui) + Send + Sync>;
+pub type LayoutFn = Box<dyn FnMut(&mut eframe::egui::Ui) + Send + Sync>;
 pub type ExecuteFn = Box<dyn FnMut() + Send + Sync>;
 pub type ScrollToFn = Box<dyn FnMut() + Send + Sync>;
 

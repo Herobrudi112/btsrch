@@ -277,7 +277,7 @@ impl QueryParser for AppParser {
                         #[cfg(target_os = "linux")]
                         {
                             if let Some(handle) = &s2.icon {
-                                use egui::{Image, Vec2};
+                                use eframe::egui::{Image, Vec2};
 
                                 ui.add(
                                     Image::new(format!("file://{}", &handle))

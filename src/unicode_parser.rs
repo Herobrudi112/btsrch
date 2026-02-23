@@ -2,7 +2,7 @@ use std::{sync::Arc, time::Duration};
 
 use async_trait::async_trait;
 use base64::Engine;
-use egui::{
+use eframe::egui::{
     Align, Color32, ColorImage, FontSelection, Image, Label, RichText, Style, TextureHandle, TextureOptions, Ui, Vec2, text::LayoutJob
 };
 use image::ImageFormat;

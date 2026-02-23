@@ -200,26 +200,6 @@ impl eframe::App for SearchApp {
                         });
                     });
             });
-        ctx.set_visuals(egui::Visuals {
-            window_fill: egui::Color32::from_rgba_unmultiplied(0, 0, 0, 0),
-            ..egui::Visuals::dark()
-        });
-        let mut style = (*ctx.style()).clone();
-        style.visuals.override_text_color = Some(egui::Color32::WHITE);
-        ctx.set_style(style);
-        let mut fonts = egui::FontDefinitions::default();
-        fonts.font_data.insert(
-            "my_font".to_owned(),
-            Arc::new(egui::FontData::from_static(include_bytes!(
-                r"../NotoSansSymbols-Regular-Subsetted.ttf"
-            ))),
-        );
-        fonts
-            .families
-            .get_mut(&egui::FontFamily::Proportional)
-            .unwrap()
-            .insert(0, "my_font".to_owned());
-        ctx.set_fonts(fonts);
     }
 }
 
@@ -227,8 +207,8 @@ impl eframe::App for SearchApp {
 async fn main() {
     let mut options = eframe::NativeOptions::default();
     options.run_and_return = false;
-    let endpoint=existing_instance::establish_endpoint("btsrch_short_unique_key", true).unwrap();
-    if let Endpoint::Existing(_)=endpoint {
+    let endpoint = existing_instance::establish_endpoint("btsrch_short_unique_key", true).unwrap();
+    if let Endpoint::Existing(_) = endpoint {
         println!("already open...");
         std::process::exit(0);
     }
@@ -270,8 +250,8 @@ async fn main() {
                     .unwrap()
                     .reply()
                     .unwrap();
-                width=primary_info.width as f32 * 0.3;
-                height=primary_info.height as f32 * 0.8;
+                width = primary_info.width as f32 * 0.3;
+                height = primary_info.height as f32 * 0.8;
                 let x = primary_info.x + ((primary_info.width / 2) as i16) - (width as i16) / 2;
                 let y = primary_info.y + ((primary_info.height / 2) as i16) - (height as i16) / 2;
                 options.viewport = options.viewport.with_position((x as f32, y as f32));
@@ -282,19 +262,47 @@ async fn main() {
     }
     let (atx, rx) = mpsc::channel::<String>(128);
     let (tx, arx) = mpsc::channel::<ChangeInstruction>(128);
-    let app = SearchApp::new(atx, arx);
-    let mut mgr = QueryManager::new(rx, tx);
-    let a = tokio::task::spawn_blocking(|| async move {
-        mgr.add_query_parser::<CustomCommandsParser>();
-        mgr.add_query_parser::<LinkParser>();
-        mgr.add_query_parser::<PathParser>();
-        mgr.add_query_parser::<UnitCalcParser>();
-        mgr.add_query_parser::<AppParser>();
-        mgr.add_query_parser::<UnicodeParser>();
-        mgr.start().await.unwrap();
-    });
-    tokio::spawn(async move {
-        a.await.unwrap().await;
-    });
-    eframe::run_native("BTSRCH", options, Box::new(|_cc| Ok(Box::new(app)))).unwrap();
+    eframe::run_native(
+        "BTSRCH",
+        options,
+        Box::new(|cc| {
+            let app = SearchApp::new(atx, arx);
+            let mut mgr = QueryManager::new(rx, tx);
+            let a = tokio::task::spawn_blocking(|| async move {
+                mgr.add_query_parser::<CustomCommandsParser>();
+                mgr.add_query_parser::<LinkParser>();
+                mgr.add_query_parser::<PathParser>();
+                mgr.add_query_parser::<UnitCalcParser>();
+                mgr.add_query_parser::<AppParser>();
+                mgr.add_query_parser::<UnicodeParser>();
+                mgr.start().await.unwrap();
+            });
+            tokio::spawn(async move {
+                a.await.unwrap().await;
+            });
+            cc.egui_ctx.set_visuals(egui::Visuals {
+                window_fill: egui::Color32::from_rgba_unmultiplied(0, 0, 0, 0),
+                ..egui::Visuals::dark()
+            });
+            let mut style = (*cc.egui_ctx.style()).clone();
+            style.visuals.override_text_color = Some(egui::Color32::WHITE);
+            cc.egui_ctx.set_style(style);
+            
+            let mut fonts = egui::FontDefinitions::default();
+            fonts.font_data.insert(
+                "my_font".to_owned(),
+                Arc::new(egui::FontData::from_static(include_bytes!(
+                    r"../NotoSansSymbols-Regular-Subsetted.ttf"
+                ))),
+            );
+            fonts
+                .families
+                .get_mut(&egui::FontFamily::Proportional)
+                .unwrap()
+                .insert(0, "my_font".to_owned());
+            cc.egui_ctx.set_fonts(fonts);
+            Ok(Box::new(app))
+        }),
+    )
+    .unwrap();
 }
