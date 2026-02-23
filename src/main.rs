@@ -292,7 +292,7 @@ async fn main() {
             fonts.font_data.insert(
                 "my_font".to_owned(),
                 Arc::new(egui::FontData::from_static(include_bytes!(
-                    r"../NotoSansSymbols-Regular-Subsetted.ttf"
+                    r"../NotoSans-VariableFont_wdth,wght.ttf"
                 ))),
             );
             fonts

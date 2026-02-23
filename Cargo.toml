@@ -8,11 +8,11 @@ arboard = {version="3.6.0", default-features = false}
 async-trait = "0.1.88"
 base64 = "0.22.1"
 eframe = {version="0.33.0", default-features = false, features = ["x11", "wayland", "glow"]}
-egui_extras = { version = "0.33.3", features = ["all_loaders"] }
+egui_extras = { version = "0.33.3", features = ["image", "file"] }
 existing_instance = "0.1.0"
 icon = "0.2.0"
-image = {version="0.25.6",features=["png"]}
-image-extras = "0.1.0"
+image = {version="0.25.6", default-features = false,features=["png"]}
+image-extras = {version="0.1.0", default-features = false,features=["xpm"]}
 open = "5.3.2"
 regex = "1.11.1"
 resvg = "0.47.0"

@@ -8,7 +8,11 @@ use std::os::windows::process::CommandExt;
 use async_trait::async_trait;
 use tokio::sync::{RwLock, mpsc};
 
-use crate::{query_manager::{ListEntry, QueryParser}, search_helper::search, unicode_parser::mark_text};
+use crate::{
+    query_manager::{ListEntry, QueryParser},
+    search_helper::search,
+    unicode_parser::mark_text,
+};
 
 #[cfg(target_os = "linux")]
 /*
@@ -45,7 +49,7 @@ fn system_language() -> Option<String> {
 #[cfg(target_os = "linux")]
 #[derive(Clone)]
 pub struct AppInfo {
-    pub filename:String,
+    pub filename: String,
     pub name: String,
     pub exec: String,
     pub search_terms: Option<String>,
@@ -68,7 +72,7 @@ impl Default for AppParser {
         let app_list = Arc::new(RwLock::new(Vec::new()));
         let app_list_clone = app_list.clone();
         let t = tokio::task::spawn_blocking(|| async move {
-            let start=Instant::now();
+            let start = Instant::now();
             #[cfg(target_os = "windows")]
             {
                 use std::process::Stdio;
@@ -92,24 +96,32 @@ impl Default for AppParser {
                 println!("{:?}", start.elapsed());
                 let lang = system_language().unwrap();
                 let app_dirs = [
-                    &format!(
-                        "{}/.local/share/applications",
-                        std::env::var("HOME").unwrap()
-                    ),
-                    "/usr/share/applications",
-                ];
+                    if let Ok(s) = std::env::var("XDG_DATA_HOME") {
+                        s.split(":").map(|s| format!("{s}/applications")).collect()
+                    } else {
+                        vec![format!("{}/.local/share/applications", std::env::var("HOME").unwrap())]
+                    },
+                    if let Ok(s) = std::env::var("XDG_DATA_DIRS") {
+                        s.split(":").map(|s| format!("{s}/applications")).collect()
+                    } else {
+                        vec![format!("/usr/share/applications")]
+                    },
+                ].into_iter().flatten().collect::<Vec<String>>();
                 let mut apps = Vec::new();
                 for dir in app_dirs {
                     use std::path::Path;
 
-                    if Path::new(dir).exists() {
+                    if Path::new(&dir).exists() {
                         use std::fs;
 
                         if let Ok(entries) = fs::read_dir(dir) {
                             for entry in entries.flatten() {
                                 let path = entry.path();
-                                let filename=path.file_name().unwrap().to_str().unwrap().to_string();
-                                if path.extension().map_or(false, |ext| ext == "desktop")&&!apps.iter().any(|a: &AppInfo| a.filename==filename) {
+                                let filename =
+                                    path.file_name().unwrap().to_str().unwrap().to_string();
+                                if path.extension().map_or(false, |ext| ext == "desktop")
+                                    && !apps.iter().any(|a: &AppInfo| a.filename == filename)
+                                {
                                     use tokio::fs::read_to_string;
 
                                     let mut name = Some(
@@ -160,11 +172,21 @@ impl Default for AppParser {
                                     let name_comb = name_lang.or(name);
                                     if display && name_comb.is_some() && exec.is_some() {
                                         let icon = icon
-                                            .map(|icon| {let find_default_icon = icons.find_icon(icon.as_str(), 16, 1, "breeze-dark"); println!("{icon}: {:?}", find_default_icon); find_default_icon})
+                                            .map(|icon| {
+                                                let find_default_icon = icons.find_icon(
+                                                    icon.as_str(),
+                                                    16,
+                                                    1,
+                                                    "breeze-dark",
+                                                );
+                                                println!("{icon}: {:?}", find_default_icon);
+                                                find_default_icon
+                                            })
                                             .flatten()
                                             .map(|icon_file| {
                                                 let path = icon_file.path();
-                                                if path.extension().unwrap().to_str().unwrap() == "svg"
+                                                if path.extension().unwrap().to_str().unwrap()
+                                                    == "svg"
                                                 {
                                                     let cache_path = format!(
                                                         "{}{}{}.png",
@@ -179,14 +201,15 @@ impl Default for AppParser {
                                                         path.parent().unwrap().to_str().unwrap(),
                                                         path.file_stem().unwrap().to_str().unwrap()
                                                     );
-                                                    if !Path::new(&cache_path).exists(){
-                                                        use std::fs::{create_dir_all, read_to_string};
-        
-                                                        use resvg::{
-                                                            tiny_skia::Pixmap,
-                                                            usvg::Transform,
+                                                    if !Path::new(&cache_path).exists() {
+                                                        use std::fs::{
+                                                            create_dir_all, read_to_string,
                                                         };
-        
+
+                                                        use resvg::{
+                                                            tiny_skia::Pixmap, usvg::Transform,
+                                                        };
+
                                                         let tree = resvg::usvg::Tree::from_str(
                                                             read_to_string(path).unwrap().as_str(),
                                                             &resvg::usvg::Options::default(),
@@ -203,13 +226,20 @@ impl Default for AppParser {
                                                             &mut pixmap.as_mut(),
                                                         );
                                                         create_dir_all(
-                                                            &Path::new(&cache_path).parent().unwrap(),
+                                                            &Path::new(&cache_path)
+                                                                .parent()
+                                                                .unwrap(),
                                                         )
                                                         .unwrap();
                                                         pixmap.save_png(&cache_path).unwrap();
                                                     }
                                                     Some(cache_path)
-                                                }else if path.extension().unwrap().to_str().unwrap() == "xpm"
+                                                } else if path
+                                                    .extension()
+                                                    .unwrap()
+                                                    .to_str()
+                                                    .unwrap()
+                                                    == "xpm"
                                                 {
                                                     let cache_path = format!(
                                                         "{}{}{}.png",
@@ -224,8 +254,11 @@ impl Default for AppParser {
                                                         path.parent().unwrap().to_str().unwrap(),
                                                         path.file_stem().unwrap().to_str().unwrap()
                                                     );
-                                                    if !Path::new(&cache_path).exists(){
-                                                        image::open(&path).unwrap().save(&cache_path).unwrap();
+                                                    if !Path::new(&cache_path).exists() {
+                                                        image::open(&path)
+                                                            .unwrap()
+                                                            .save(&cache_path)
+                                                            .unwrap();
                                                     }
                                                     Some(cache_path)
                                                 } else {
@@ -266,9 +299,24 @@ impl QueryParser for AppParser {
             tokio::time::sleep(std::time::Duration::from_millis(100)).await;
             apps = self.apps.read().await;
         }
-        let mut results=search(&query, apps.iter().map(|a| (Some(a.name.clone()).iter().chain(a.search_terms.iter()).map(|s| s.clone()).collect::<Vec<String>>().join(" "), a)).collect());
+        let mut results = search(
+            &query,
+            apps.iter()
+                .map(|a| {
+                    (
+                        Some(a.name.clone())
+                            .iter()
+                            .chain(a.search_terms.iter())
+                            .map(|s| s.clone())
+                            .collect::<Vec<String>>()
+                            .join(" "),
+                        a,
+                    )
+                })
+                .collect(),
+        );
         for s in results.drain(..) {
-            let priority=1.0;
+            let priority = 1.0;
             let s2 = apps[s.0].clone();
             let s3 = apps[s.0].clone();
             resopnse
@@ -285,7 +333,16 @@ impl QueryParser for AppParser {
                                 );
                             }
                         }
-                        mark_text(Some(s2.name.clone()).iter().chain(s2.search_terms.iter()).map(|s| s.clone()).collect::<Vec<String>>().join(" "), &s.1, ui);
+                        mark_text(
+                            Some(s2.name.clone())
+                                .iter()
+                                .chain(s2.search_terms.iter())
+                                .map(|s| s.clone())
+                                .collect::<Vec<String>>()
+                                .join(" "),
+                            &s.1,
+                            ui,
+                        );
                     }),
                     execute: Some(Box::new(move || {
                         #[cfg(target_os = "windows")]
