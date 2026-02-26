@@ -7,7 +7,7 @@ edition = "2024"
 arboard = {version="3.6.0", default-features = false}
 async-trait = "0.1.88"
 base64 = "0.22.1"
-eframe = {version="0.33.0", default-features = false, features = ["x11", "wayland", "glow"]}
+eframe = {version="0.33.0", default-features = false, features = ["x11", "wayland", "wgpu"]}
 egui_extras = { version = "0.33.3", features = ["image", "file"] }
 existing_instance = "0.1.0"
 icon = "0.2.0"
@@ -19,4 +19,5 @@ resvg = "0.47.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tokio = { version = "1.46.1", features = ["full"] }
+wgpu = { version = "27", default-features = false, features = ["vulkan"] }
 x11rb = "0.13.1"
