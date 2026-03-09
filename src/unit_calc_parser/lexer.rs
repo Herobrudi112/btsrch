@@ -763,30 +763,29 @@ pub fn get_units() -> Vec<Unit> {
     ]);
 
     v.extend(vec![
-    Unit {
-        name: "mile per hour".to_string(),
-        plural: "miles per hour".to_string(),
-        abbreviation: "mph".to_string(),
-        valid_names: Vec::new(),
-        si: UnitNumber {
-            num: 1609.344 / 3600.0, // 1 mph in m/s
-            units: vec![
-                UnitExp {
-                    unit: MetricBaseUnit::Meter,
-                    exp: 1,
-                },
-                UnitExp {
-                    unit: MetricBaseUnit::Second,
-                    exp: -1,
-                },
-            ],
+        Unit {
+            name: "mile per hour".to_string(),
+            plural: "miles per hour".to_string(),
+            abbreviation: "mph".to_string(),
+            valid_names: Vec::new(),
+            si: UnitNumber {
+                num: 1609.344 / 3600.0, // 1 mph in m/s
+                units: vec![
+                    UnitExp {
+                        unit: MetricBaseUnit::Meter,
+                        exp: 1,
+                    },
+                    UnitExp {
+                        unit: MetricBaseUnit::Second,
+                        exp: -1,
+                    },
+                ],
+            }
+            .cleaned(),
+            priority: 0.0,
         }
-        .cleaned(),
-        priority: 0.0,
-    }
-    .create()
-]);
-
+        .create(),
+    ]);
 
     v.extend(
         Unit {
@@ -928,6 +927,28 @@ pub fn get_units() -> Vec<Unit> {
             valid_names: Vec::new(),
             si: UnitNumber {
                 num: 1609.344,
+                units: vec![UnitExp {
+                    unit: MetricBaseUnit::Meter,
+                    exp: 1,
+                }],
+            },
+            priority: -3.0,
+        }
+        .create(),
+    );
+
+    v.push(
+        Unit {
+            name: "nautical_mile".to_string(),
+            plural: "nautical_miles".to_string(),
+            abbreviation: "nmi".to_string(),
+            valid_names: vec![
+                "nauticalmile".to_string(),
+                "nautical_mile".to_string(),
+                "nm".to_string(),
+            ],
+            si: UnitNumber {
+                num: 1852.0,
                 units: vec![UnitExp {
                     unit: MetricBaseUnit::Meter,
                     exp: 1,

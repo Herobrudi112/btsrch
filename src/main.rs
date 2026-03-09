@@ -100,8 +100,8 @@ impl eframe::App for SearchApp {
                 }
                 Frame::NONE
                     .fill(egui::Color32::from_rgba_unmultiplied(10 + 30, 10, 10, 200))
-                    .corner_radius(10)
-                    .outer_margin(5)
+                    .corner_radius(15)
+                    .outer_margin(3)
                     .inner_margin(5)
                     .shadow(Shadow {
                         offset: [0, 0],
@@ -287,19 +287,19 @@ async fn main() {
             let mut style = (*cc.egui_ctx.style()).clone();
             style.visuals.override_text_color = Some(egui::Color32::WHITE);
             cc.egui_ctx.set_style(style);
-            
+
             let mut fonts = egui::FontDefinitions::default();
             fonts.font_data.insert(
-                "my_font".to_owned(),
+                "unifont".to_owned(),
                 Arc::new(egui::FontData::from_static(include_bytes!(
-                    r"../NotoSans-VariableFont_wdth,wght.ttf"
+                    r"../UnifontExMono.ttf"
                 ))),
             );
             fonts
                 .families
                 .get_mut(&egui::FontFamily::Proportional)
                 .unwrap()
-                .insert(0, "my_font".to_owned());
+                .insert(0, "unifont".to_owned());
             cc.egui_ctx.set_fonts(fonts);
             Ok(Box::new(app))
         }),
