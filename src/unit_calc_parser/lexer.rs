@@ -76,6 +76,7 @@ pub fn get_token(s: String, units: &Vec<Unit>) -> Option<Vec<Token>> {
         ("-", vec![Token::Minus]),
         ("*", vec![Token::Mult]),
         ("/", vec![Token::Div]),
+        ("per", vec![Token::Div]),
         ("^", vec![Token::Power]),
         ("<=", vec![Token::LowerEq]),
         ("<", vec![Token::Lower]),
@@ -119,7 +120,7 @@ pub fn get_token(s: String, units: &Vec<Unit>) -> Option<Vec<Token>> {
 }
 pub fn get_units() -> Vec<Unit> {
     let mut v = vec![];
-    v.extend(
+    v.push(
         Unit {
             name: "percent".to_string(),
             plural: "percents".to_string(),
@@ -131,11 +132,10 @@ pub fn get_units() -> Vec<Unit> {
             },
             priority: f32::NEG_INFINITY,
         }
-        .create()
-        .add_si_prefixes(),
+        .create(),
     );
 
-    v.extend(
+    v.push(
         Unit {
             name: "π".to_string(),
             plural: "π".to_string(),
@@ -147,8 +147,79 @@ pub fn get_units() -> Vec<Unit> {
             },
             priority: 0.0,
         }
+        .create(),
+    );
+
+    v.push(
+        Unit {
+            name: "degree".to_string(),
+            plural: "degrees".to_string(),
+            abbreviation: "°".to_string(),
+            valid_names: vec!["deg".to_string()],
+            si: UnitNumber {
+                num: std::f64::consts::PI / 180.0,
+                units: vec![],
+            },
+            priority: 0.0,
+        }
+        .create(),
+    );
+
+    v.extend(
+        Unit {
+            name: "steradian".to_string(),
+            plural: "steradians".to_string(),
+            abbreviation: "sr".to_string(),
+            valid_names: vec![],
+            si: UnitNumber {
+                num: 1.0,
+                units: vec![],
+            },
+            priority: 0.0,
+        }
         .create()
         .add_si_prefixes(),
+    );
+
+    v.push(
+        Unit {
+            name: "arcminute".to_string(),
+            plural: "arcminutes".to_string(),
+            abbreviation: "′".to_string(),
+            valid_names: vec![
+                "arcmin".to_string(),
+                "amin".to_string(),
+                "´".to_string(),
+                "'".to_string(),
+            ],
+            si: UnitNumber {
+                num: std::f64::consts::PI / 10800.0,
+                units: vec![],
+            },
+            priority: 0.0,
+        }
+        .create(),
+    );
+
+    v.push(
+        Unit {
+            name: "arcsecond".to_string(),
+            plural: "arcseconds".to_string(),
+            abbreviation: "″".to_string(),
+            valid_names: vec![
+                "arcsec".to_string(),
+                "asec".to_string(),
+                "´´".to_string(),
+                "''".to_string(),
+                "′′".to_string(),
+            ],
+            si: UnitNumber {
+                num: std::f64::consts::PI / 648000.0,
+                units: vec![],
+            },
+            priority: 0.0,
+        }
+        .create(),
     );
 
     v.extend(
@@ -686,7 +757,7 @@ pub fn get_units() -> Vec<Unit> {
         .add_si_prefixes(),
     );
 
-    v.extend(
+    v.push(
         Unit {
             name: "knot".to_string(),
             plural: "knots".to_string(),
@@ -705,10 +776,33 @@ pub fn get_units() -> Vec<Unit> {
                     },
                 ],
             },
+            priority: -3.0,
+        }
+        .create(),
+    );
+
+    v.push(
+        Unit {
+            name: "light speed".to_string(),
+            plural: "light speed".to_string(),
+            abbreviation: "c".to_string(),
+            valid_names: Vec::new(),
+            si: UnitNumber {
+                num: 2.99792458e8,
+                units: vec![
+                    UnitExp {
+                        unit: MetricBaseUnit::Meter,
+                        exp: 1,
+                    },
+                    UnitExp {
+                        unit: MetricBaseUnit::Second,
+                        exp: -1,
+                    },
+                ],
+            },
             priority: 0.0,
         }
         .create()
-        .add_si_prefixes(),
     );
 
     v.extend(
@@ -782,7 +876,7 @@ pub fn get_units() -> Vec<Unit> {
                 ],
             }
             .cleaned(),
-            priority: 0.0,
+            priority: -3.0,
         }
         .create(),
     ]);
