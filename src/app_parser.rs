@@ -52,6 +52,7 @@ pub struct AppInfo {
     pub filename: String,
     pub name: String,
     pub exec: String,
+    pub terminal:bool,
     pub search_terms: Option<String>,
     pub icon: Option<String>,
 }
@@ -135,6 +136,7 @@ impl Default for AppParser {
                                     let mut search_terms_lang: Option<String> = None;
                                     let mut icon: Option<String> = None;
                                     let mut display = true;
+                                    let mut terminal = false;
                                     for l in lines {
                                         if let Some((a, b)) = l.split_once('=') {
                                             match a {
@@ -160,6 +162,13 @@ impl Default for AppParser {
                                                     display = match b {
                                                         "true" => false,
                                                         "false" => true,
+                                                        _ => true,
+                                                    }
+                                                }
+                                                "Terminal" => {
+                                                    terminal = match b {
+                                                        "true" => true,
+                                                        "false" => false,
                                                         _ => true,
                                                     }
                                                 }
@@ -270,6 +279,7 @@ impl Default for AppParser {
                                             filename,
                                             name: name_comb.unwrap(),
                                             exec: exec.unwrap(),
+                                            terminal,
                                             search_terms: search_terms.or(search_terms_lang),
                                             icon,
                                         });
@@ -352,18 +362,31 @@ impl QueryParser for AppParser {
                         }
                         #[cfg(target_os = "linux")]
                         {
-                            let mut args = s3
-                                .exec
-                                .split(' ')
-                                .filter(|s| !vec!["%F", "%U"].contains(s))
-                                .collect::<Vec<&str>>();
-                            let _ = Command::new(args[0])
-                                .args(&mut args[1..])
-                                .stdin(std::process::Stdio::null())
-                                .stdout(std::process::Stdio::null())
-                                .stderr(std::process::Stdio::null())
-                                .spawn()
-                                .unwrap();
+                            if s3.terminal{
+                                let st=format!("\"$TERMINAL\" -e sh -c \"{}\"", s3.exec);
+                                println!("{}", st);
+                                let mut args = vec!["-c", st.as_str()];
+                                let _ = Command::new("sh")
+                                    .args(&mut args)
+                                    .stdin(std::process::Stdio::null())
+                                    .stdout(std::process::Stdio::null())
+                                    .stderr(std::process::Stdio::null())
+                                    .spawn()
+                                    .unwrap();
+                            }else{
+                                let mut args = s3
+                                    .exec
+                                    .split(' ')
+                                    .filter(|s| !vec!["%F", "%U"].contains(s))
+                                    .collect::<Vec<&str>>();
+                                let _ = Command::new(args[0])
+                                    .args(&mut args[1..])
+                                    .stdin(std::process::Stdio::null())
+                                    .stdout(std::process::Stdio::null())
+                                    .stderr(std::process::Stdio::null())
+                                    .spawn()
+                                    .unwrap();
+                            }
                         }
                         std::process::exit(0);
                     })),
