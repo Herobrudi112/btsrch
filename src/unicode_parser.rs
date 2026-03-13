@@ -13,6 +13,7 @@ use tokio::{
 };
 
 use crate::{
+    config,
     query_manager::{ListEntry, QueryParser},
     search_helper::search,
 };
@@ -109,6 +110,17 @@ impl Default for UnicodeParser {
 #[async_trait]
 impl QueryParser for UnicodeParser {
     async fn parse(&self, query: String, resopnse: mpsc::Sender<ListEntry>) -> Option<()> {
+        let query = if config::is_sachsi_search() {
+            let trimmed = query.trim_start();
+            if let Some(rest) = trimmed.strip_prefix("e:").or_else(|| trimmed.strip_prefix("E:")) {
+                rest.trim_start().to_string()
+            } else {
+                return None;
+            }
+        } else {
+            query
+        };
+
         let mut characters = self.unicode.read().await;
         while characters.len() == 0 {
             drop(characters);
@@ -175,15 +187,22 @@ pub fn mark_text(s: String, mark: &Vec<usize>, ui: &mut Ui) {
     let mut text = LayoutJob::default();
     let mut last = 0;
     let mut marked = false;
+
+    let visuals = ui.visuals();
+    let base_color = visuals
+        .override_text_color
+        .unwrap_or(visuals.widgets.inactive.text_color());
+    let highlight_color = Color32::from_rgb(0, 255, 255);
+
     for i in mark.iter().chain(std::iter::once(&s.len())) {
         let curtxt = s[last..*i].to_string();
         if !marked {
             RichText::new(curtxt)
-                .color(Color32::from_rgb(255, 255, 255))
+                .color(base_color)
                 .append_to(&mut text, &style, FontSelection::Default, Align::Center);
         } else {
             RichText::new(curtxt)
-                .color(Color32::from_rgb(0, 255, 255))
+                .color(highlight_color)
                 .underline()
                 .append_to(&mut text, &style, FontSelection::Default, Align::Center);
         }

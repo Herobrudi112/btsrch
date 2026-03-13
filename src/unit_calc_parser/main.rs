@@ -3,6 +3,7 @@ use async_trait::async_trait;
 use tokio::sync::mpsc;
 
 use crate::{
+    config,
     query_manager::{ListEntry, QueryParser},
     unit_calc_parser::{
         lexer::{get_units, lex},
@@ -20,7 +21,18 @@ impl Default for UnitCalcParser {
 }
 #[async_trait]
 impl QueryParser for UnitCalcParser {
-    async fn parse(&self, query: String, resopnse: mpsc::Sender<ListEntry>)->Option<()> {
+    async fn parse(&self, query: String, resopnse: mpsc::Sender<ListEntry>) -> Option<()> {
+        let query = if config::is_sachsi_search() {
+            let trimmed = query.trim_start();
+            if let Some(rest) = trimmed.strip_prefix("c:").or_else(|| trimmed.strip_prefix("C:")) {
+                rest.trim_start().to_string()
+            } else {
+                return None;
+            }
+        } else {
+            query
+        };
+
         let len = query.len();
         let (text, priority) = match execute_unit_str(query) {
             Ok(v) => {

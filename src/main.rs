@@ -9,6 +9,7 @@ pub mod search_helper;
 pub mod test_parser;
 pub mod unicode_parser;
 pub mod unit_calc_parser;
+pub mod config;
 
 use std::sync::Arc;
 
@@ -35,10 +36,15 @@ struct SearchApp {
     scroll_todo: bool,
     had_focus: bool,
     last_input: String,
+    launcher_style: bool,
 }
 
 impl SearchApp {
-    fn new(tx: mpsc::Sender<String>, rx: mpsc::Receiver<ChangeInstruction>) -> Self {
+    fn new(
+        tx: mpsc::Sender<String>,
+        rx: mpsc::Receiver<ChangeInstruction>,
+        launcher_style: bool,
+    ) -> Self {
         Self {
             query: String::new(),
             layout: Vec::new(),
@@ -48,20 +54,13 @@ impl SearchApp {
             had_focus: false,
             scroll_todo: false,
             last_input: String::new(),
+            launcher_style,
         }
     }
 }
 
-impl eframe::App for SearchApp {
-    fn clear_color(&self, _visuals: &egui::Visuals) -> [f32; 4] {
-        egui::Rgba::TRANSPARENT.to_array()
-    }
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        image_extras::register();
-        egui_extras::install_image_loaders(ctx);
-        CentralPanel::default()
-            .frame(egui::Frame::NONE)
-            .show(ctx, |ui| {
+impl SearchApp {
+    fn draw_inner_contents(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
                 if ctx.input(|i| i.key_pressed(Key::Escape)) {
                     ctx.send_viewport_cmd(egui::ViewportCommand::Close);
                 }
@@ -98,27 +97,39 @@ impl eframe::App for SearchApp {
                         ctx.send_viewport_cmd(egui::ViewportCommand::Close);
                     }
                 }
+                let (search_bg, search_shadow_color) = if self.launcher_style {
+                    (
+                        egui::Color32::from_rgba_unmultiplied(38, 38, 42, 255),
+                        egui::Color32::from_rgba_unmultiplied(0, 0, 0, 120),
+                    )
+                } else {
+                    (
+                        egui::Color32::from_rgba_unmultiplied(10 + 30, 10, 10, 200),
+                        egui::Color32::from_rgba_unmultiplied(0, 255, 255, 128),
+                    )
+                };
                 Frame::NONE
-                    .fill(egui::Color32::from_rgba_unmultiplied(10 + 30, 10, 10, 200))
-                    .corner_radius(15)
+                    .fill(search_bg)
+                    .corner_radius(18)
                     .outer_margin(3)
-                    .inner_margin(5)
+                    .inner_margin(8)
                     .shadow(Shadow {
                         offset: [0, 0],
-                        blur: 0,
+                        blur: if self.launcher_style { 12 } else { 0 },
                         spread: 2,
-                        color: egui::Color32::from_rgba_unmultiplied(0, 255, 255, 128),
+                        color: search_shadow_color,
                     })
                     .show(ui, |ui| {
                         ui.with_layout(Layout::left_to_right(Align::Min), |ui| {
-                            let resp = ui.add(
-                                TextEdit::singleline(&mut self.query)
-                                    // .hint_text("Type to search...")
-                                    .desired_width(f32::INFINITY)
-                                    .lock_focus(true)
-                                    .font(FontId::new(24.0, egui::FontFamily::Proportional))
-                                    .frame(false),
-                            );
+                            let mut text_edit = TextEdit::singleline(&mut self.query)
+                                .desired_width(f32::INFINITY)
+                                .lock_focus(true)
+                                .font(FontId::new(24.0, egui::FontFamily::Proportional))
+                                .frame(false);
+                            if self.launcher_style {
+                                text_edit = text_edit.hint_text("Search apps, files, emojis…");
+                            }
+                            let resp = ui.add(text_edit);
                             resp.request_focus();
                             if resp.changed() {
                                 let q = self.query.clone();
@@ -137,7 +148,12 @@ impl eframe::App for SearchApp {
                         egui::scroll_area::ScrollBarVisibility::VisibleWhenNeeded,
                     )
                     .show(ui, |ui| {
-                        ui.with_layout(Layout::top_down(Align::Center), |ui| {
+                        let list_align = if self.launcher_style {
+                            Align::Min
+                        } else {
+                            Align::Center
+                        };
+                        ui.with_layout(Layout::top_down(list_align), |ui| {
                             while let Ok(l) = self.layout_receiver.try_recv() {
                                 match l {
                                     ChangeInstruction::Add(la) => {
@@ -162,36 +178,102 @@ impl eframe::App for SearchApp {
                             }
                             for i in 0..self.layout.len() {
                                 let l = &mut self.layout[i];
-                                let mut brightness = 10;
-                                if l.execute.is_some() {
-                                    brightness = 20;
-                                    if i == self.selected_id {
-                                        brightness = 50;
+                                let frame = if self.launcher_style {
+                                    let (bg, is_selected) = if i == self.selected_id {
+                                        (egui::Color32::from_rgb(255, 255, 255), true)
+                                    } else if l.execute.is_some() {
+                                        (egui::Color32::from_rgb(46, 46, 52), false)
+                                    } else {
+                                        (egui::Color32::from_rgb(40, 40, 46), false)
+                                    };
+                                    let inner_margin = if is_selected { 10 } else { 8 };
+
+                                    if is_selected {
+                                        Frame::NONE
+                                            .fill(bg)
+                                            .corner_radius(12)
+                                            .outer_margin(4)
+                                            .inner_margin(inner_margin)
+                                            .shadow(Shadow {
+                                                offset: [0, 0],
+                                                blur: 10,
+                                                spread: 1,
+                                                color: egui::Color32::from_rgba_unmultiplied(
+                                                    0, 0, 0, 200,
+                                                ),
+                                            })
+                                            .show(ui, |ui| {
+                                                ui.scope(|ui| {
+                                                    ui.style_mut()
+                                                        .visuals
+                                                        .override_text_color =
+                                                        Some(egui::Color32::BLACK);
+                                                    ui.with_layout(
+                                                        Layout::left_to_right(Align::Min),
+                                                        |ui| {
+                                                            (l.layout_fn)(ui);
+                                                        },
+                                                    );
+                                                });
+                                            })
+                                    } else {
+                                        Frame::NONE
+                                            .fill(bg)
+                                            .corner_radius(12)
+                                            .outer_margin(4)
+                                            .inner_margin(inner_margin)
+                                            .shadow(Shadow {
+                                                offset: [0, 0],
+                                                blur: 4,
+                                                spread: 1,
+                                                color: egui::Color32::from_rgba_unmultiplied(
+                                                    0, 0, 0, 180,
+                                                ),
+                                            })
+                                            .show(ui, |ui| {
+                                                ui.with_layout(
+                                                    Layout::left_to_right(Align::Min),
+                                                    |ui| {
+                                                        (l.layout_fn)(ui);
+                                                    },
+                                                );
+                                            })
                                     }
-                                }
-                                let frame = Frame::NONE
-                                    .fill(egui::Color32::from_rgba_unmultiplied(
-                                        brightness + 30,
-                                        brightness,
-                                        brightness,
-                                        200,
-                                    ))
-                                    .corner_radius(10)
-                                    .outer_margin(5)
-                                    .inner_margin(5)
-                                    .shadow(Shadow {
-                                        offset: [0, 0],
-                                        blur: 0,
-                                        spread: 2,
-                                        color: egui::Color32::from_rgba_unmultiplied(
-                                            0, 255, 255, 128,
-                                        ),
-                                    })
-                                    .show(ui, |ui| {
-                                        ui.with_layout(Layout::left_to_right(Align::Min), |ui| {
-                                            (l.layout_fn)(ui);
-                                        });
-                                    });
+                                } else {
+                                    let mut brightness = 10;
+                                    if l.execute.is_some() {
+                                        brightness = 20;
+                                        if i == self.selected_id {
+                                            brightness = 50;
+                                        }
+                                    }
+                                    Frame::NONE
+                                        .fill(egui::Color32::from_rgba_unmultiplied(
+                                            brightness + 30,
+                                            brightness,
+                                            brightness,
+                                            200,
+                                        ))
+                                        .corner_radius(10)
+                                        .outer_margin(5)
+                                        .inner_margin(5)
+                                        .shadow(Shadow {
+                                            offset: [0, 0],
+                                            blur: 0,
+                                            spread: 2,
+                                            color: egui::Color32::from_rgba_unmultiplied(
+                                                0, 255, 255, 128,
+                                            ),
+                                        })
+                                        .show(ui, |ui| {
+                                            ui.with_layout(
+                                                Layout::left_to_right(Align::Min),
+                                                |ui| {
+                                                    (l.layout_fn)(ui);
+                                                },
+                                            );
+                                        })
+                                };
                                 if self.scroll_todo && self.selected_id == i {
                                     frame.response.scroll_to_me(None);
                                     self.scroll_todo = false;
@@ -199,6 +281,49 @@ impl eframe::App for SearchApp {
                             }
                         });
                     });
+    }
+
+    fn draw_contents(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+        if self.launcher_style {
+            // Single opaque card background behind search + results.
+            Frame::NONE
+                .fill(egui::Color32::from_rgb(26, 26, 32))
+                .corner_radius(24)
+                .outer_margin(egui::Margin {
+                    left: 24,
+                    right: 24,
+                    top: 24,
+                    bottom: 24,
+                })
+                .inner_margin(12)
+                .shadow(Shadow {
+                    offset: [0, 10],
+                    blur: 24,
+                    spread: 0,
+                    color: egui::Color32::from_rgba_unmultiplied(0, 0, 0, 200),
+                })
+                .show(ui, |ui| {
+                    self.draw_inner_contents(ctx, ui);
+                });
+        } else {
+            self.draw_inner_contents(ctx, ui);
+        }
+    }
+}
+
+impl eframe::App for SearchApp {
+    fn clear_color(&self, _visuals: &egui::Visuals) -> [f32; 4] {
+        // Keep the outer window fully transparent; the inner card
+        // handles its own opaque background.
+        egui::Rgba::TRANSPARENT.to_array()
+    }
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        image_extras::register();
+        egui_extras::install_image_loaders(ctx);
+        CentralPanel::default()
+            .frame(egui::Frame::NONE)
+            .show(ctx, |ui| {
+                self.draw_contents(ctx, ui);
             });
     }
 }
@@ -206,6 +331,7 @@ impl eframe::App for SearchApp {
 #[tokio::main(flavor = "multi_thread")]
 async fn main() {
     let mut options = eframe::NativeOptions::default();
+    let launcher_style = config::is_launcher_style();
     options.run_and_return = false;
     let endpoint = existing_instance::establish_endpoint("btsrch_short_unique_key", true).unwrap();
     if let Endpoint::Existing(_) = endpoint {
@@ -266,7 +392,7 @@ async fn main() {
         "BTSRCH",
         options,
         Box::new(|cc| {
-            let app = SearchApp::new(atx, arx);
+            let app = SearchApp::new(atx, arx, launcher_style);
             let mut mgr = QueryManager::new(rx, tx);
             let a = tokio::task::spawn_blocking(|| async move {
                 mgr.add_query_parser::<CustomCommandsParser>();
@@ -280,10 +406,11 @@ async fn main() {
             tokio::spawn(async move {
                 a.await.unwrap().await;
             });
-            cc.egui_ctx.set_visuals(egui::Visuals {
-                window_fill: egui::Color32::from_rgba_unmultiplied(0, 0, 0, 0),
-                ..egui::Visuals::dark()
-            });
+            let mut visuals = egui::Visuals::dark();
+            // Make the OS window background transparent; the inner
+            // card is fully opaque and provides the visual shell.
+            visuals.window_fill = egui::Color32::from_rgba_unmultiplied(0, 0, 0, 0);
+            cc.egui_ctx.set_visuals(visuals);
             let mut style = (*cc.egui_ctx.style()).clone();
             style.visuals.override_text_color = Some(egui::Color32::WHITE);
             cc.egui_ctx.set_style(style);
